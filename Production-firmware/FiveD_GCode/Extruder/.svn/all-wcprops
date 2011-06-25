@@ -1,0 +1,17 @@
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svnroot/reprap/!svn/ver/3764/trunk/software/firmware/FiveD_GCode/Extruder
+END
+temperature.h
+K 25
+svn:wc:ra_dav:version-url
+V 88
+/svnroot/reprap/!svn/ver/3764/trunk/software/firmware/FiveD_GCode/Extruder/temperature.h
+END
+extruder_class.pde
+K 25
+svn:wc:ra_dav:version-url
+V 93
+/svnroot/reprap/!svn/ver/3764/trunk/software/firmware/FiveD_GCode/Extruder/extruder_class.pde
+END
