@@ -1,0 +1,10 @@
+K 10
+svn:ignore
+V 46
+configuration.h
+applet
+*.3890
+*.3967
+*.latest
+
+END
