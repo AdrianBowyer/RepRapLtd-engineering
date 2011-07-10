@@ -141,6 +141,8 @@ int serial_count = 0;
 boolean comment_mode = false;
 char *strchr_pointer; // just a pointer to find chars in the cmd string like X, Y, Z, E, etc
 
+boolean check_endstops;
+
 // Manage heater variables. For a thermistor or AD595 thermocouple, raw values refer to the 
 // reading from the analog pin. For a MAX6675 thermocouple, the raw value is the temperature in 0.25 
 // degree increments (i.e. 100=25 deg). 
@@ -237,6 +239,7 @@ void setup()
   for(int i=0;i<BUFSIZE;i++){
       fromsd[i]=false;
   }
+  check_endstops = false;
   //Initialize Step Pins
   if(X_STEP_PIN > -1) pinMode(X_STEP_PIN,OUTPUT);
   if(Y_STEP_PIN > -1) pinMode(Y_STEP_PIN,OUTPUT);
@@ -490,6 +493,7 @@ inline void current_to_dest()
 
 inline void home_x()
 {
+        check_endstops = true;
   	saved_feedrate = current_feedrate;
   	current_feedrate = 2500.0;
   	current_to_dest();
@@ -505,10 +509,12 @@ inline void home_x()
   	#endif
   	current_x = 0;
   	current_feedrate = saved_feedrate;
+        check_endstops = false;
 }
   	
 inline void home_y()
 {
+        check_endstops = true;
   	saved_feedrate = current_feedrate;
   	current_feedrate = 2500.0;
   	current_to_dest();
@@ -524,10 +530,12 @@ inline void home_y()
   	#endif
   	current_y = 0;
   	current_feedrate = saved_feedrate;
+        check_endstops = false;
 }
  	
 inline void home_z()
 {
+        check_endstops = true;
   	saved_feedrate = current_feedrate;
   	current_feedrate = 50.0;
   	current_to_dest();
@@ -543,6 +551,7 @@ inline void home_z()
   	#endif  	
   	current_z = 0;
   	current_feedrate = saved_feedrate;
+        check_endstops = false;
  }
   	
 
@@ -1435,16 +1444,18 @@ inline bool can_step_switch(const long& here, const long& there, bool direction,
   if(here == there)
     return false;
   
-  if(direction)
+  if(check_endstops)
   {
+    if(direction)
+    {
       if(maxstop >= 0)
         return digitalRead(maxstop) == ENDSTOPS_INVERTING;
-  } else
-  {
+    } else
+    {
       if(minstop >= 0)
         return digitalRead(minstop) == ENDSTOPS_INVERTING;
+    }
   }
-  
   return true;
 }
 
