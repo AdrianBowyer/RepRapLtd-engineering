@@ -16,6 +16,8 @@
 
 /**
 
+Arduino Mega
+
 RepRap GCode interpreter.
 
 IMPORTANT

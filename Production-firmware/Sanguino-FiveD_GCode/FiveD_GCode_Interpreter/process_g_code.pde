@@ -92,7 +92,7 @@ FloatPoint sp;
 #define DEBUG_INFO (1<<1)
 #define DEBUG_ERRORS (1<<2)
 
-byte SendDebug =  DEBUG_INFO | DEBUG_ERRORS;
+byte SendDebug =  DEBUG_ECHO | DEBUG_INFO | DEBUG_ERRORS;
 
         
 // The following three inline functions are used for things like return to 0
@@ -236,6 +236,7 @@ void get_and_do_command()
 	//if we've got a real command, do it
 	if (serial_count && c == '\n')
 	{
+                Serial.println("x");
                 // Terminate string
                 cmdbuffer[serial_count] = 0;
                 

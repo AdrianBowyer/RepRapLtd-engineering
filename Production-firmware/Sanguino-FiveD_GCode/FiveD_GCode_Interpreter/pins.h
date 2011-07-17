@@ -310,7 +310,6 @@
   
   http://reprap.org/wiki/Sanguinololu
 
-
  stepper-enable D4        PB4
  e-dir          D0        PB0
  e-step         D1        PB1
@@ -327,6 +326,8 @@
  x-stop         D18       PC2 
  y-stop         D19       PC3 
  z-stop         D20       PC4
+
+
 */
 
 #define DEBUG_PIN        -1
@@ -351,9 +352,8 @@
 
 // Heated bed
 
-#define BED_HEATER_PIN 13
+#define BED_HEATER_PIN 14
 #define BED_TEMPERATURE_PIN 6
-
 
 //extruder pins
 
@@ -363,6 +363,9 @@
 #define EXTRUDER_0_HEATER_PIN 13
 #define EXTRUDER_0_TEMPERATURE_PIN 7 
 
+
+
+
 /*
 #define EXTRUDER_1_STEP_PIN 4
 #define EXTRUDER_1_DIR_PIN 5
@@ -370,7 +373,6 @@
 #define EXTRUDER_1_HEATER_PIN 13
 #define EXTRUDER_1_TEMPERATURE_PIN 2 
 */
-
 
 
 #else

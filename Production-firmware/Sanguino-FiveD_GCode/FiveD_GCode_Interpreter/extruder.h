@@ -366,7 +366,7 @@ inline bool extruder::ping()
 
 /**********************************************************************************************
 *
-* RepRap Arduino Mega Motherboard
+* RepRap Arduino Mega/Sanguinololu Motherboard
 *
 */
 

@@ -1,5 +1,5 @@
 /*
- * This controld the heated bed (if any).
+ * This controls the heated bed (if any).
  */
 
 #ifndef BED_H

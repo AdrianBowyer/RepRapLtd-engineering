@@ -22,7 +22,7 @@
 // Arduino Mega: 3
 // Sanguinololu: 4
 
-#define MOTHERBOARD 3
+#define MOTHERBOARD 4
 
 // The width of Henry VIII's thumb (or something).
 
@@ -251,7 +251,7 @@
 
 //**********************************************************************************************
 
-// These settings are mainly for a Huxley with an Sanguinololu controller
+// These settings are mainly for a Huxley/Mendel with an Sanguinololu controller
 // See http://reprap.org/wiki/Sanguinololu
 
 #if MOTHERBOARD == 4
@@ -278,15 +278,15 @@
 
 // The second set of commented out values are for the new 13-tooth pulley: pulley_7_9-5_13_7
 
-#define X_STEPS_PER_MM   80.376
+#define X_STEPS_PER_MM   91.4286
 #define X_STEPS_PER_INCH (X_STEPS_PER_MM*INCHES_TO_MM) // *RO
 #define INVERT_X_DIR 0
 
-#define Y_STEPS_PER_MM   80.376
+#define Y_STEPS_PER_MM   91.4286
 #define Y_STEPS_PER_INCH (Y_STEPS_PER_MM*INCHES_TO_MM) // *RO
 #define INVERT_Y_DIR 0
 
-#define Z_STEPS_PER_MM   6667.184
+#define Z_STEPS_PER_MM   2560
 #define Z_STEPS_PER_INCH (Z_STEPS_PER_MM*INCHES_TO_MM) // *RO
 #define INVERT_Z_DIR 1
 
@@ -350,7 +350,7 @@ extern volatile byte endstop_hits;
 #define SMALL_DISTANCE2 (SMALL_DISTANCE*SMALL_DISTANCE) // *RO
 
 //our maximum feedrates in mm/minute
-#define FAST_XY_FEEDRATE 3000.0
+#define FAST_XY_FEEDRATE 2000.0
 #define FAST_Z_FEEDRATE  50.0
 
 // Data for acceleration calculations
@@ -402,7 +402,7 @@ extern volatile byte endstop_hits;
 
 // The size of the movement buffer
 
-#define BUFFER_SIZE 4 // *RO
+#define BUFFER_SIZE 3 // *RO
 
 // Number of microseconds between timer interrupts when no movement
 // is happening

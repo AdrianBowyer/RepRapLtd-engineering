@@ -103,8 +103,14 @@ void kill(byte debug);
 
 //Stepper Movement Variables
 bool direction_x, direction_y, direction_z, direction_e;
-unsigned long previous_micros=0, previous_micros_x=0, previous_micros_y=0, previous_micros_z=0, previous_micros_e=0, previous_millis_heater, previous_millis_bed_heater;
+unsigned long previous_millis_heater, previous_millis_bed_heater;
+float destination_x =0.0, destination_y = 0.0, destination_z = 0.0, destination_e = 0.0;
+float current_x = 0.0, current_y = 0.0, current_z = 0.0, current_e = 0.0;
+float feedrate = 1500, next_feedrate, saved_feedrate, current_feedrate=1500;
+
+#ifndef REPRAP_ACC
 unsigned long x_steps_to_take, y_steps_to_take, z_steps_to_take, e_steps_to_take;
+unsigned long previous_micros=0, previous_micros_x=0, previous_micros_y=0, previous_micros_z=0, previous_micros_e=0;
 unsigned long long_full_velocity_units = full_velocity_units * 100;
 unsigned long long_travel_move_full_velocity_units = travel_move_full_velocity_units * 100;
 unsigned long max_x_interval = 100000000.0 / (min_units_per_second * x_steps_per_unit);
@@ -113,19 +119,18 @@ unsigned long max_interval, interval;
 unsigned long x_min_constant_speed_steps = min_constant_speed_units * x_steps_per_unit,
   y_min_constant_speed_steps = min_constant_speed_units * y_steps_per_unit, min_constant_speed_steps;
 boolean acceleration_enabled,accelerating;
-float destination_x =0.0, destination_y = 0.0, destination_z = 0.0, destination_e = 0.0;
-float current_x = 0.0, current_y = 0.0, current_z = 0.0, current_e = 0.0;
 long x_interval, y_interval, z_interval, e_interval; // for speed delay
-float feedrate = 1500, next_feedrate, saved_feedrate, current_feedrate=1500;
 float time_for_move;
-long gcode_N, gcode_LastN;
-bool relative_mode = false;  //Determines Absolute or Relative Coordinates
-bool relative_mode_e = false;  //Determines Absolute or Relative E Codes while in Absolute Coordinates mode. E is always relative in Relative Coordinates mode.
 long timediff=0;
 #ifdef STEP_DELAY_RATIO
 long long_step_delay_ratio = STEP_DELAY_RATIO * 100;
 #endif
+#endif
 
+
+long gcode_N, gcode_LastN;
+bool relative_mode = false;  //Determines Absolute or Relative Coordinates
+bool relative_mode_e = false;  //Determines Absolute or Relative E Codes while in Absolute Coordinates mode. E is always relative in Relative Coordinates mode.
 
 // comm variables
 #define MAX_CMD_SIZE 256
@@ -491,69 +496,59 @@ inline void current_to_dest()
 #endif
 }
 
-inline void home_x()
+inline void home_axis(float& destination, float& current, const float& slow, const float& fast, const float& max_length, const int min_pin)
 {
         check_endstops = true;
   	saved_feedrate = current_feedrate;
-  	current_feedrate = 2500.0;
+  
+  	current_feedrate = slow;
   	current_to_dest();
-        if(X_MIN_PIN >= 0)
-  	  destination_x = -2.0*X_MAX_LENGTH;
+        destination = current - 2.0;
+        feedrate = fast;
+        setup_move();
+  	#ifdef REPRAP_ACC
+  	 linear_move();
+  	#else
+  	 linear_move(x_steps_to_take, y_steps_to_take, z_steps_to_take, e_steps_to_take); // make the move
+  	#endif
+        
+        if(min_pin >= 0)
+  	  destination = -2.0*max_length;
         else
-          destination_x = 0.0; // Best we can do
+          destination = 0.0; // Best we can do
   	setup_move();
   	#ifdef REPRAP_ACC
   	 linear_move();
   	#else
   	 linear_move(x_steps_to_take, y_steps_to_take, z_steps_to_take, e_steps_to_take); // make the move
   	#endif
-  	current_x = 0;
-  	current_feedrate = saved_feedrate;
-        check_endstops = false;
-}
-  	
-inline void home_y()
-{
-        check_endstops = true;
-  	saved_feedrate = current_feedrate;
-  	current_feedrate = 2500.0;
-  	current_to_dest();
-        if(Y_MIN_PIN >= 0)
-  	  destination_y = -2.0*Y_MAX_LENGTH;
-        else
-          destination_y = 0.0; // Best we can do
-  	setup_move();
+
+  	current_feedrate = 0.25*slow;
+  	current_to_dest();  
+        destination = 1.0;
+        setup_move();
   	#ifdef REPRAP_ACC
   	 linear_move();
   	#else
   	 linear_move(x_steps_to_take, y_steps_to_take, z_steps_to_take, e_steps_to_take); // make the move
-  	#endif
-  	current_y = 0;
-  	current_feedrate = saved_feedrate;
-        check_endstops = false;
-}
- 	
-inline void home_z()
-{
-        check_endstops = true;
-  	saved_feedrate = current_feedrate;
-  	current_feedrate = 50.0;
-  	current_to_dest();
-        if(Z_MIN_PIN >= 0)
-  	  destination_z = -2.0*Z_MAX_LENGTH;
+  	#endif 
+  
+        if(min_pin >= 0)
+  	  destination = -10.0;
         else
-          destination_z = 0.0; // Best we can do
-  	setup_move();
+          destination = 0.0; // Again, best we can do
+        setup_move();
   	#ifdef REPRAP_ACC
   	 linear_move();
   	#else
   	 linear_move(x_steps_to_take, y_steps_to_take, z_steps_to_take, e_steps_to_take); // make the move
-  	#endif  	
-  	current_z = 0;
+  	#endif 
+  
+  	current = 0;
   	current_feedrate = saved_feedrate;
         check_endstops = false;
- }
-  	
+}
+  
 
 
 
@@ -592,24 +587,24 @@ inline void process_commands()
         done = false;
   	if(code_seen('X'))
   	{
-  	  home_x();
+  	  home_axis(destination_x, current_x, SLOW_XY, FAST_XY, X_MAX_LENGTH, X_MIN_PIN);
   	  done = true;
   	}
   	if(code_seen('Y'))
   	{
-  	  home_y();
+  	  home_axis(destination_y, current_y, SLOW_XY, FAST_XY, Y_MAX_LENGTH, Y_MIN_PIN);
   	  done = true;
   	}
   	if(code_seen('Z'))
   	{
-  	  home_z();
+  	  home_axis(destination_z, current_z, SLOW_Z, FAST_Z, Z_MAX_LENGTH, Z_MIN_PIN);
   	  done = true;
   	}
   	if(!done)
   	{
-  	  home_x();
-  	  home_y();
-  	  home_z();
+  	  home_axis(destination_x, current_x, SLOW_XY, FAST_XY, X_MAX_LENGTH, X_MIN_PIN);
+  	  home_axis(destination_y, current_y, SLOW_XY, FAST_XY, Y_MAX_LENGTH, Y_MIN_PIN);
+  	  home_axis(destination_z, current_z, SLOW_Z, FAST_Z, Z_MAX_LENGTH, Z_MIN_PIN);
   	}
         previous_millis_cmd = millis();
         break;  
@@ -746,21 +741,25 @@ inline void process_commands()
       case 105: // M105
         #if (TEMP_0_PIN>-1) || defined (HEATER_USES_MAX6675)
           tt=analog2temp(current_raw);
+        #else
+          tt=0;
         #endif
         #if TEMP_1_PIN>-1
           bt=analog2tempBed(current_bed_raw);
+        #else
+          bt = 0;
         #endif
-        #if (TEMP_0_PIN>-1) || defined (HEATER_USES_MAX6675)
+        //#if (TEMP_0_PIN>-1) || defined (HEATER_USES_MAX6675)
           Serial.print("ok T:");
           Serial.print(tt);
-          #if TEMP_1_PIN>-1
-            Serial.print(" B:");
-            Serial.print(bt); 
-          #endif
+          //#if TEMP_1_PIN>-1
+          Serial.print(" B:");
+          Serial.print(bt); 
+          //#endif
          Serial.println(); 
-        #else
-          Serial.println("No thermistors - no temp");
-        #endif
+        //#else
+        //  Serial.println("No thermistors - no temp");
+        //#endif
         return;
         //break;
       case 109: // M109 - Wait for extruder heater to reach target.
@@ -777,8 +776,8 @@ inline void process_commands()
         while(current_raw < target_raw) {
           if( (millis()-previous_millis_heater) > 1000 ) //Print Temp Reading every 1 second while heating up.
           {
-            Serial.print("T:");
-            Serial.println( analog2temp(current_raw) ); 
+            //Serial.print("T:");
+            //Serial.println( analog2temp(current_raw) ); 
             previous_millis_heater = millis(); 
           }
           manage_heater();
@@ -1253,7 +1252,7 @@ long current_steps_x, current_steps_y, current_steps_z, current_steps_e, current
 long target_steps_x, target_steps_y, target_steps_z, target_steps_e, target_steps_f;
 long delta_steps_x, delta_steps_y, delta_steps_z, delta_steps_e, delta_steps_f;	
 float position, target, diff, distance;
-long integer_distance;
+//long integer_distance;
 long step_time, time_increment;
 
 /*
@@ -1267,39 +1266,54 @@ feedrate_now is in mm/minute,
 distance is in mm, 
 integer_distance is 3000000.0*distance
 
-To prevent long overflow, we work in increments of 20 microseconds; hence 
-the 3,000,000 rather than 60,000,000.
+To prevent long overflow, we work in increments of 50 microseconds; hence 
+the 1,200,000 rather than 60,000,000.
 */
 
-#define DISTANCE_MULTIPLIER 3000000.0
-#define MICRO_RES 20
+//#define DISTANCE_MULTIPLIER 1200000.0
+//#define MICRO_RES 50
 
-inline long calculate_feedrate_delay(const long& feedrate_now)
+//inline long calculate_feedrate_delay(const long& feedrate_now)
+//{  
+//  return MICRO_RES*(integer_distance/(feedrate_now*total_steps));	
+//}
+
+inline long calculate_feedrate_delay(const float& feedrate_now)
 {  
-  return MICRO_RES*(integer_distance/(feedrate_now*total_steps));	
+        
+	// Calculate delay between steps in microseconds.  Here it is in English:
+        // (feedrate is in mm/minute, distance is in mm)
+	// 60000000.0*distance/feedrate  = move duration in microseconds
+	// move duration/total_steps = time between steps for master axis.
+
+	return lround( (distance*60000000.0) / (feedrate_now*(float)total_steps) );	
 }
 
 inline void do_x_step()
 {
   digitalWrite(X_STEP_PIN, HIGH);
+  //delayMicroseconds(3);
   digitalWrite(X_STEP_PIN, LOW);
 }
 
 inline void do_y_step()
 {
   digitalWrite(Y_STEP_PIN, HIGH);
+ //delayMicroseconds(3);
   digitalWrite(Y_STEP_PIN, LOW);
 }
 
 inline void do_z_step()
 {
   digitalWrite(Z_STEP_PIN, HIGH);
+  //delayMicroseconds(3);
   digitalWrite(Z_STEP_PIN, LOW);
 }
 
 inline void do_e_step()
 {
   digitalWrite(E_STEP_PIN, HIGH);
+ // delayMicroseconds(3);
   digitalWrite(E_STEP_PIN, LOW);
 }
 
@@ -1324,7 +1338,7 @@ inline void coord_to_steps(const float& current, const float& destination, long&
   switch(dist_check)
   {
     case CONDITIONAL_UPDATE:
-          if(distance > SMALL_DISTANCE2)
+          if(distance > SMALL_DISTANCE2)  // Don't update with E if X, Y or Z going somewhere already
             return;
     case ALWAYS_UPDATE:
           diff = target - position;
@@ -1380,7 +1394,7 @@ inline void setup_move()
               target_steps_f, delta_steps_f, direction_f, NEVER_UPDATE);  
 
   distance = sqrt(distance); 
-  integer_distance = lround(distance*DISTANCE_MULTIPLIER);  
+  //integer_distance = lround(distance*DISTANCE_MULTIPLIER);  
                                                                                    		
   total_steps = max(delta_steps_x, delta_steps_y);
   total_steps = max(total_steps, delta_steps_z);
@@ -1421,7 +1435,7 @@ inline void setup_move()
   dda_counter_e = dda_counter_x;
   dda_counter_f = dda_counter_x;
   
-  time_increment = calculate_feedrate_delay(t_scale*current_steps_f);
+  time_increment = calculate_feedrate_delay((float)(t_scale*current_steps_f));
 
   if(delta_steps_x) enable_x();
   if(delta_steps_y) enable_y();
@@ -1429,13 +1443,13 @@ inline void setup_move()
   if(delta_steps_e) enable_e();
   
   if (direction_x) digitalWrite(X_DIR_PIN,!INVERT_X_DIR);
-  else digitalWrite(X_DIR_PIN,INVERT_X_DIR);
+    else digitalWrite(X_DIR_PIN,INVERT_X_DIR);
   if (direction_y) digitalWrite(Y_DIR_PIN,!INVERT_Y_DIR);
-  else digitalWrite(Y_DIR_PIN,INVERT_Y_DIR);
+    else digitalWrite(Y_DIR_PIN,INVERT_Y_DIR);
   if (direction_z) digitalWrite(Z_DIR_PIN,!INVERT_Z_DIR);
-  else digitalWrite(Z_DIR_PIN,INVERT_Z_DIR);
+    else digitalWrite(Z_DIR_PIN,INVERT_Z_DIR);
   if (direction_e) digitalWrite(E_DIR_PIN,!INVERT_E_DIR);
-  else digitalWrite(E_DIR_PIN,INVERT_E_DIR); 
+    else digitalWrite(E_DIR_PIN,INVERT_E_DIR); 
 
 }
 
@@ -1475,17 +1489,7 @@ void linear_move() // make linear move with preset speeds and destinations, see 
   step_time = micros();
  
   do
-  {
-      while(step_time > micros())
-      {
-        if((millis() - previous_millis_heater) >= 500)
-        {
-          manage_heater();
-          previous_millis_heater = millis();
-          manage_inactivity(2);
-        }
-      }
-      
+  {     
                 x_can_step = can_step_switch(current_steps_x, target_steps_x, direction_x, X_MIN_PIN, X_MAX_PIN);
 		y_can_step = can_step_switch(current_steps_y, target_steps_y, direction_y, Y_MIN_PIN, Y_MAX_PIN);
                 z_can_step = can_step_switch(current_steps_z, target_steps_z, direction_z, Z_MIN_PIN, Z_MAX_PIN);
@@ -1574,12 +1578,22 @@ void linear_move() // make linear move with preset speeds and destinations, see 
 					current_steps_f++;
 				else
 					current_steps_f--;
-                                time_increment = calculate_feedrate_delay(t_scale*current_steps_f);
+                                time_increment = calculate_feedrate_delay((float)(t_scale*current_steps_f));
 			} 
 		}
                   
-                if(real_move) // If only F has changed, no point in delaying 
+                //if(real_move) // If only F has changed, no point in delaying 
                   step_time += time_increment; 
+                  
+      while(step_time > micros())
+      {
+        if((millis() - previous_millis_heater) >= 500)
+        {
+          manage_heater();
+          previous_millis_heater = millis();
+          manage_inactivity(2);
+        }
+      }  
                   
   } while (x_can_step || y_can_step || z_can_step  || e_can_step || f_can_step);
   
@@ -1589,15 +1603,15 @@ void linear_move() // make linear move with preset speeds and destinations, see 
   if(DISABLE_Z) disable_z();
   if(DISABLE_E) disable_e();
 
-  if(digitalRead(X_MIN_PIN) != ENDSTOPS_INVERTING)
+  if(check_endstops && (digitalRead(X_MIN_PIN) != ENDSTOPS_INVERTING))
     current_x = 0.0;
   else
     current_x = destination_x;
-  if(digitalRead(Y_MIN_PIN) != ENDSTOPS_INVERTING)
+  if(check_endstops && (digitalRead(Y_MIN_PIN) != ENDSTOPS_INVERTING))
     current_y = 0.0;
   else
     current_y = destination_y;
-  if(digitalRead(Z_MIN_PIN) != ENDSTOPS_INVERTING)
+  if(check_endstops && (digitalRead(Z_MIN_PIN) != ENDSTOPS_INVERTING))
     current_z = 0.0;
   else
     current_z = destination_z;    

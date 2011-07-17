@@ -16,6 +16,9 @@
 
 /**
 
+Sanguinololu
+
+
 RepRap GCode interpreter.
 
 IMPORTANT
@@ -36,7 +39,7 @@ http://objects.reprap.org/wiki/Mendel_User_Manual:_RepRapGCodes
 // Sanguino v1.5 by Adrian Bowyer - implemented 4D Bressenham XYZ+ stepper control... (a.bowyer@bath.ac.uk)
 // Sanguino v1.6 by Adrian Bowyer - implemented RS485 extruders
 // Arduino Mega v1.7 by Adrian Bowyer
-
+// Sanguinololu v1.8 by Adrian Bowyer
 
 
 
@@ -82,7 +85,7 @@ intercom talker;
 
 #endif
 
-// Arduino Mega
+// Arduino Mega + Sanguinololu
 
 #if MOTHERBOARD >= 3
 
@@ -105,7 +108,7 @@ cartesian_dda* cdda[BUFFER_SIZE];
 static cartesian_dda cdda0;
 static cartesian_dda cdda1;
 static cartesian_dda cdda2;
-static cartesian_dda cdda3;
+//static cartesian_dda cdda3;
 
 volatile byte head;
 volatile byte tail;
@@ -183,9 +186,9 @@ void setup()
   cdda[0] = &cdda0;
   cdda[1] = &cdda1;  
   cdda[2] = &cdda2;  
-  cdda[3] = &cdda3;
+  //cdda[3] = &cdda3;
   
-  for(byte i = 0; i < 4; i++)
+  for(byte i = 0; i < BUFFER_SIZE; i++)
     cdda[i]->set_units(true);
   
   //setExtruder();
@@ -266,12 +269,12 @@ void manage_all()
 #endif  
 }
 
-//long count = 0;
+long count = 0;
 //int ct1 = 0;
 
 void loop()
 {
-  nonest = false;
+   nonest = false;
    manage_all();
    get_and_do_command(); 
 #if MOTHERBOARD == 2
