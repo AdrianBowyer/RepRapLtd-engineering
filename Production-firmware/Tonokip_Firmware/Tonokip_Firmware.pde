@@ -522,6 +522,12 @@ inline void home_axis(float& destination, float& current, const float& slow, con
   	#else
   	 linear_move(x_steps_to_take, y_steps_to_take, z_steps_to_take, e_steps_to_take); // make the move
   	#endif
+  
+        if(min_pin < 0)
+        {
+          current_feedrate = saved_feedrate;
+          return;
+        }
 
   	current_feedrate = 0.25*slow;
   	current_to_dest();  
@@ -742,12 +748,12 @@ inline void process_commands()
         #if (TEMP_0_PIN>-1) || defined (HEATER_USES_MAX6675)
           tt=analog2temp(current_raw);
         #else
-          tt=0;
+          tt=-273;
         #endif
         #if TEMP_1_PIN>-1
           bt=analog2tempBed(current_bed_raw);
         #else
-          bt = 0;
+          bt = -273;
         #endif
         //#if (TEMP_0_PIN>-1) || defined (HEATER_USES_MAX6675)
           Serial.print("ok T:");
@@ -774,7 +780,7 @@ inline void process_commands()
         #endif
         previous_millis_heater = millis(); 
         while(current_raw < target_raw) {
-          if( (millis()-previous_millis_heater) > 1000 ) //Print Temp Reading every 1 second while heating up.
+          if( (millis()-previous_millis_heater) > 1000 ) 
           {
             //Serial.print("T:");
             //Serial.println( analog2temp(current_raw) ); 
@@ -807,17 +813,23 @@ inline void process_commands()
       #endif
       break;
       case 106: //M106 Fan On
-        if (code_seen('S')){
+        if(FAN_PIN > -1)
+        {
+          if (code_seen('S')){
             digitalWrite(FAN_PIN, HIGH);
             analogWrite(FAN_PIN,constrain(code_value(),0,255));
-        }
-        else
+          }
+          else
             digitalWrite(FAN_PIN, HIGH);
+        }
         break;
       case 107: //M107 Fan Off
-        analogWrite(FAN_PIN, 0);
+        if(FAN_PIN > -1)
+        {
+          analogWrite(FAN_PIN, 0);
         
-        digitalWrite(FAN_PIN, LOW);
+          digitalWrite(FAN_PIN, LOW);
+        }
         break;
       case 80: // M81 - ATX Power On
         if(PS_ON_PIN > -1) pinMode(PS_ON_PIN,OUTPUT); //GND
@@ -873,7 +885,7 @@ inline void process_commands()
      // Put some extruder-swapping code in here... 
   }
   else{
-      Serial.println("Unknown command:");
+      Serial.println("ok Unknown command:");
       Serial.println(cmdbuffer[bufindr]);
   }
   
@@ -885,7 +897,7 @@ inline void FlushSerialRequestResend()
 {
   //char cmdbuffer[bufindr][100]="Resend:";
   Serial.flush();
-  Serial.print("Resend:");
+  Serial.print("rs ");
   Serial.println(gcode_LastN+1);
   ClearToSend();
 }
@@ -1251,9 +1263,9 @@ long dda_counter_x, dda_counter_y, dda_counter_z, dda_counter_e, dda_counter_f;
 long current_steps_x, current_steps_y, current_steps_z, current_steps_e, current_steps_f;
 long target_steps_x, target_steps_y, target_steps_z, target_steps_e, target_steps_f;
 long delta_steps_x, delta_steps_y, delta_steps_z, delta_steps_e, delta_steps_f;	
-float position, target, diff, distance;
+float position, target, diff, distance, f_total_steps;
 //long integer_distance;
-long step_time, time_increment;
+unsigned long start_time, time_increment;
 
 /*
 
@@ -1278,7 +1290,7 @@ the 1,200,000 rather than 60,000,000.
 //  return MICRO_RES*(integer_distance/(feedrate_now*total_steps));	
 //}
 
-inline long calculate_feedrate_delay(const float& feedrate_now)
+inline unsigned long calculate_feedrate_delay(const float& feedrate_now)
 {  
         
 	// Calculate delay between steps in microseconds.  Here it is in English:
@@ -1286,7 +1298,7 @@ inline long calculate_feedrate_delay(const float& feedrate_now)
 	// 60000000.0*distance/feedrate  = move duration in microseconds
 	// move duration/total_steps = time between steps for master axis.
 
-	return lround( (distance*60000000.0) / (feedrate_now*(float)total_steps) );	
+	return (unsigned long)lround( (distance*60000000.0) / (feedrate_now*f_total_steps) );	
 }
 
 inline void do_x_step()
@@ -1404,6 +1416,7 @@ inline void setup_move()
         
   if(total_steps <= 0)
   {
+     f_total_steps = 0.0;
      nullmove = true;
      current_feedrate = feedrate;
      return;
@@ -1429,6 +1442,7 @@ inline void setup_move()
      }
   }  
 
+  f_total_steps = (float)total_steps;
   dda_counter_x = -total_steps/2;
   dda_counter_y = dda_counter_x;
   dda_counter_z = dda_counter_x;
@@ -1486,10 +1500,12 @@ void linear_move() // make linear move with preset speeds and destinations, see 
      return;
    }
    
-  step_time = micros();
+  
  
   do
   {     
+                start_time = micros();
+                
                 x_can_step = can_step_switch(current_steps_x, target_steps_x, direction_x, X_MIN_PIN, X_MAX_PIN);
 		y_can_step = can_step_switch(current_steps_y, target_steps_y, direction_y, Y_MIN_PIN, Y_MAX_PIN);
                 z_can_step = can_step_switch(current_steps_z, target_steps_z, direction_z, Z_MIN_PIN, Z_MAX_PIN);
@@ -1583,9 +1599,9 @@ void linear_move() // make linear move with preset speeds and destinations, see 
 		}
                   
                 //if(real_move) // If only F has changed, no point in delaying 
-                  step_time += time_increment; 
+                  //step_time += time_increment; 
                   
-      while(step_time > micros())
+      while(micros() - start_time < time_increment) // This should work even when micros() overflows.  See http://www.arduino.cc/cgi-bin/yabb2/YaBB.pl?num=1292358124
       {
         if((millis() - previous_millis_heater) >= 500)
         {
@@ -1593,8 +1609,7 @@ void linear_move() // make linear move with preset speeds and destinations, see 
           previous_millis_heater = millis();
           manage_inactivity(2);
         }
-      }  
-                  
+      }            
   } while (x_can_step || y_can_step || z_can_step  || e_can_step || f_can_step);
   
 
@@ -1607,10 +1622,12 @@ void linear_move() // make linear move with preset speeds and destinations, see 
     current_x = 0.0;
   else
     current_x = destination_x;
+    
   if(check_endstops && (digitalRead(Y_MIN_PIN) != ENDSTOPS_INVERTING))
     current_y = 0.0;
   else
     current_y = destination_y;
+    
   if(check_endstops && (digitalRead(Z_MIN_PIN) != ENDSTOPS_INVERTING))
     current_z = 0.0;
   else

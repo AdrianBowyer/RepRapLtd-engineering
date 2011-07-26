@@ -17,18 +17,24 @@
 // Comment out to get Ordinary G-code F-value behaviour
 #define REPRAP_ACC
 
+#define SLOW_XY 1500.0 // Feedrate from which the motors can do a standing start
+#define FAST_XY 2500.0 // Fastest feedrate possible
+#define SLOW_Z 50.0 // Feedrate from which the motors can do a standing start
+#define FAST_Z 50.0 // Fastest feedrate possible
+
 //Step delay over interval ratio. If you are still experiencing missing steps, try to uncomment the following line, but be aware this
 //If you enable this, make sure STEP_DELAY_MICROS is disabled.
 //#define STEP_DELAY_RATIO 0.25
 
 //Acceleration settings
+#ifndef REPRAP_ACC
 float full_velocity_units = 10; // the units between minimum and G1 move feedrate
 float travel_move_full_velocity_units = 10; // used for travel moves
 float min_units_per_second = 35.0; // the minimum feedrate
 float min_constant_speed_units = 2; // the minimum units of an accelerated move that must be done at constant speed
                                     // Note that if the move is shorter than this value, acceleration won't be perfomed,
                                     // but will be done at the minimum between min_units_per_seconds and move feedrate speeds.
-
+#endif
 // AD595 THERMOCOUPLE SUPPORT UNTESTED... USE WITH CAUTION!!!!
 
 //PID settings:
@@ -68,10 +74,12 @@ float min_constant_speed_units = 2; // the minimum units of an accelerated move 
 // units are in millimeters or whatever length unit you prefer: inches,football-fields,parsecs etc
 
 //Calibration variables
-float x_steps_per_unit = 80;
-float y_steps_per_unit = 80;
+//float x_steps_per_unit = 80;  // 8 tooth pulley, T5 belt
+//float y_steps_per_unit = 80;  // 8 tooth pulley, T5 belt
+float x_steps_per_unit = 91.4286;  // 14 tooth pulley, T2.5 belt
+float y_steps_per_unit = 91.4286;  // 14 tooth pulley, T2.5 belt
 float z_steps_per_unit = 2560;
-float e_steps_per_unit = 30;
+float e_steps_per_unit = 26; // Should be 30
 
 #ifdef REPRAP_ACC
 float f_steps_per_unit = 1;
