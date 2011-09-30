@@ -229,7 +229,7 @@ void SdFile::ls(uint8_t flags, uint8_t indent) {
       Serial.print(' ');
       Serial.print(p->fileSize);
     }
-    Serial.println();
+    Serial.print(",");  // Changed by AB from Serial.println();
 
     // list subdirectory content if requested
     if ((flags & LS_R) && DIR_IS_SUBDIR(p)) {

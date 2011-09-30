@@ -66,6 +66,8 @@ float current_feedrate = 100.0;
 boolean check_endstops = false;
 #endif
 
+boolean ok_sent = false;
+
 char axis_codes[NUM_AXIS] = {'X', 'Y', 'Z', 'E'};
 bool move_direction[NUM_AXIS];
 unsigned long axis_previous_micros[NUM_AXIS];
@@ -171,14 +173,17 @@ void initsd(){
 		root.close();
 	if (!card.init(SPI_FULL_SPEED,SDSS)){
 		//if (!card.init(SPI_HALF_SPEED,SDSS))
-		Serial.println("SD init fail");
+		Serial.println("// SD init fail");
 	}
 	else if (!volume.init(&card))
-		Serial.println("volume.init failed");
+		Serial.println("// Volume.init failed");
 	else if (!root.openRoot(&volume)) 
-		Serial.println("openRoot failed");
+		Serial.println("// OpenRoot failed");
 	else 
+        {
+                Serial.println("// SD card is active");
 		sdactive = true;
+        }
 	#endif
 }
 
@@ -198,7 +203,7 @@ inline void write_command(char *buf){
 	//Serial.println(begin);
 	file.write(begin);
 	if (file.writeError){
-		Serial.println("error writing to file");
+		Serial.println("// error writing to file");
 	}
 }
 #endif
@@ -364,12 +369,13 @@ void loop()
 		if(savetosd){
 			if(strstr(cmdbuffer[bufindr],"M29") == NULL){
 				write_command(cmdbuffer[bufindr]);
+                                ok_sent = true;
 				Serial.println("ok");
 			}else{
 				file.sync();
 				file.close();
 				savetosd = false;
-				Serial.println("Done saving file.");
+				Serial.println("// Done saving file.");
 			}
 		}else{
 			process_commands();
@@ -408,7 +414,7 @@ inline void get_command()
 					gcode_N = (strtol(&cmdbuffer[bufindw][strchr_pointer - cmdbuffer[bufindw] + 1], NULL, 10));
 					if(gcode_N != gcode_LastN+1 && (strstr(cmdbuffer[bufindw], "M110") == NULL) ) 
 					{
-						Serial.print("Serial Error: Line Number is not Last Line Number+1, Last Line:");
+						Serial.print("// Serial Error: Line Number is not Last Line Number+1, Last Line:");
 						Serial.println(gcode_LastN);
 						//Serial.println(gcode_N);
 						FlushSerialRequestResend();
@@ -426,7 +432,7 @@ inline void get_command()
 
 						if( (int)(strtod(&cmdbuffer[bufindw][strchr_pointer - cmdbuffer[bufindw] + 1], NULL)) != checksum) 
 						{
-							Serial.print("Error: checksum mismatch, Last Line:");
+							Serial.print("// Error: checksum mismatch, Last Line:");
 							Serial.println(gcode_LastN);
 							FlushSerialRequestResend();
 							serial_count = 0;
@@ -437,7 +443,7 @@ inline void get_command()
 					}
 					else 
 					{
-						Serial.print("Error: No Checksum with line number, Last Line:");
+						Serial.print("// Error: No Checksum with line number, Last Line:");
 						Serial.println(gcode_LastN);
 						FlushSerialRequestResend();
 						serial_count = 0;
@@ -452,7 +458,7 @@ inline void get_command()
 				{
 					if((strstr(cmdbuffer[bufindw], "*") != NULL))
 					{
-						Serial.print("Error: No Line Number with checksum, Last Line:");
+						Serial.print("// Error: No Line Number with checksum, Last Line:");
 						Serial.println(gcode_LastN);
 						serial_count = 0;
 						comment_mode = false;
@@ -470,6 +476,7 @@ inline void get_command()
 						if(savetosd)
 							break;
 						#endif
+                                                ok_sent = true;
 						Serial.println("ok"); 
 						break;
 					default:
@@ -509,7 +516,7 @@ inline void get_command()
 			if(sdpos >= filesize)
 			{
 				sdmode = false;
-				Serial.println("Done printing file");
+				Serial.println("// Done printing file");
 			}
 			if(!serial_count) 
 			{
@@ -615,8 +622,9 @@ inline void process_commands()
 			prepare_move();
 			previous_millis_cmd = millis();
 			//ClearToSend();
-			return;
-			//break;
+			//return;
+                        ok_sent = true; // Was done when the G1 was initially received.
+			break;
 		case 4: // G4 dwell
 			codenum = 0;
 			if(code_seen('P')) codenum = code_value(); // milliseconds to wait
@@ -626,6 +634,11 @@ inline void process_commands()
 				manage_heater();
 			}
 			break;
+                case 20:
+                        Serial.println("// G20 - inches not supported.");
+                        break;
+                case 21:  // Metric - do nothing
+                        break;
 		case 28: //G28 Home all Axis one at a time
 /*			saved_feedrate = destination_feedrate;
 			for(int i=0; i < NUM_AXIS; i++) {
@@ -739,6 +752,9 @@ inline void process_commands()
 				if(code_seen(axis_codes[i])) current_position[i] = code_value();  
 			}
 			break;
+                default:
+                        Serial.print("// Unknown command: ");
+                        Serial.println(cmdbuffer[bufindr]);
 
 		}
 	}
@@ -751,9 +767,10 @@ inline void process_commands()
 		#ifdef SDSUPPORT
 
 		case 20: // M20 - list SD card
-			Serial.println("Begin file list");
+			Serial.print("ok Files: {");
 			root.ls();
-			Serial.println("End file list");
+			Serial.println("}");
+                        ok_sent = true;
 			break;
 		case 21: // M21 - init SD card
 			sdmode = false;
@@ -771,16 +788,17 @@ inline void process_commands()
 				if(starpos!=NULL)
 					*(starpos-1)='\0';
 				if (file.open(&root, strchr_pointer + 4, O_READ)) {
-					Serial.print("File opened:");
+					Serial.print("// File opened:");
 					Serial.print(strchr_pointer + 4);
-					Serial.print(" Size:");
+					Serial.print("// Size:");
 					Serial.println(file.fileSize());
 					sdpos = 0;
 					filesize = file.fileSize();
-					Serial.println("File selected");
+					Serial.println("// File selected");
 				}
 				else{
-					Serial.println("file.open failed");
+					Serial.println("ok File.open failed");
+                                        ok_sent = true;
 				}
 			}
 			break;
@@ -802,13 +820,14 @@ inline void process_commands()
 			break;
 		case 27: //M27 - Get SD status
 			if(sdactive){
-				Serial.print("SD printing byte ");
+				Serial.print("ok SD printing byte ");
 				Serial.print(sdpos);
 				Serial.print("/");
 				Serial.println(filesize);
 			}else{
-				Serial.println("Not SD printing");
+				Serial.println("ok Not SD printing");
 			}
+                        ok_sent = true;
 			break;
 		case 28: //M28 - Start SD write
 			if(sdactive){
@@ -823,12 +842,12 @@ inline void process_commands()
 				}
 				if (!file.open(&root, strchr_pointer+4, O_CREAT | O_APPEND | O_WRITE | O_TRUNC))
 				{
-					Serial.print("open failed, File: ");
+					Serial.print("// Open failed, File: ");
 					Serial.print(strchr_pointer + 4);
-					Serial.print(".");
+					Serial.println(".");
 				}else{
 					savetosd = true;
-					Serial.print("Writing to file: ");
+					Serial.print("// Writing to file: ");
 					Serial.println(strchr_pointer + 4);
 				}
 			}
@@ -851,18 +870,16 @@ inline void process_commands()
 			break;
 
                 case 114: // M114
-#ifdef REPRAP_ACC
-	                Serial.print("ok C: X:");
-#else
-                        Serial.print("X:"); // Non-standard response
-#endif
-                        Serial.print(current_position[0]);
-	                Serial.print(" Y:");
-                        Serial.print(current_position[1]);
-	                Serial.print(" Z:");
-                        Serial.print(current_position[2]);
-	                Serial.print(" E:");
-                        Serial.println(current_position[3]);
+                        ok_sent = true;
+	                Serial.print("ok C:");
+                        for(int i = 0; i < NUM_AXIS; i++)
+                        {
+                          Serial.print(" ");
+                          Serial.print(axis_codes[i]);
+                          Serial.print(":"); 
+                          Serial.print(current_position[i]);
+                        }
+                        Serial.println();
                         break;
 
 		case 140: // M140 set bed temp
@@ -878,6 +895,7 @@ inline void process_commands()
 			bt = analog2tempBed(current_bed_raw);
 			#endif
 			#if (TEMP_0_PIN > -1) || defined (HEATER_USES_MAX6675) || defined HEATER_USES_AD595
+                        ok_sent = true;
 			Serial.print("ok T:");
 			Serial.print(tt); 
 			#if TEMP_1_PIN > -1 || defined BED_USES_AD595
@@ -905,7 +923,7 @@ inline void process_commands()
 			while(current_raw < target_raw) {
 				if( (millis() - codenum) > 1000 ) //Print Temp Reading every 1 second while heating up.
 				{
-					Serial.print("T:");
+					Serial.print("// T:");
 					Serial.println( analog2temp(current_raw) ); 
 					codenum = millis(); 
 				}
@@ -920,7 +938,7 @@ inline void process_commands()
 				if( (millis()-codenum) > 1000 ) //Print Temp Reading every 1 second while heating up.
 				{
 					tt=analog2temp(current_raw);
-					Serial.print("T:");
+					Serial.print("// T:");
 					Serial.print( tt );
 					Serial.print(" B:");
 					Serial.println( analog2temp(current_bed_raw) ); 
@@ -984,11 +1002,12 @@ inline void process_commands()
 			#endif
 			break;
 		case 115: // M115
-			Serial.print("FIRMWARE_NAME:Sprinter FIRMWARE_URL:http%%3A/github.com/kliment/Sprinter/ PROTOCOL_VERSION:1.0 MACHINE_TYPE:Mendel EXTRUDER_COUNT:1 UUID:");
+			Serial.print("// FIRMWARE_NAME:Sprinter FIRMWARE_URL:http%%3A/github.com/AdrianBowyer/RepRapLtd-engineering PROTOCOL_VERSION:1.X MACHINE_TYPE:Mendel EXTRUDER_COUNT:1 UUID:");
 			Serial.println(uuid);
 			break;
 
 		case 119: // M119
+                        Serial.print("// ");
 			#if (X_MIN_PIN > -1)
 				Serial.print("x_min:");
 			Serial.print((READ(X_MIN_PIN)^ENDSTOPS_INVERTING)?"H ":"L ");
@@ -1013,7 +1032,7 @@ inline void process_commands()
 				Serial.print("z_max:");
 			Serial.print((READ(Z_MAX_PIN)^ENDSTOPS_INVERTING)?"H ":"L ");
 			#endif
-			Serial.println("");
+			Serial.println();
 			break;
 			#ifdef RAMP_ACCELERATION
 			//TODO: update for all axis, use for loop
@@ -1028,14 +1047,21 @@ inline void process_commands()
 			}
 			break;
 			#endif
+                default:
+                        Serial.print("// Unknown command: ");
+                        Serial.println(cmdbuffer[bufindr]);
+
 		}
 
 	} else if (code_seen('T'))
         {
           // Put some tool change code in here...
 	}else{
-		Serial.println("Unknown command:");
-		Serial.println(cmdbuffer[bufindr]);
+                if(cmdbuffer[bufindr][0] != ';') // TODO - find out why empty comment lines get through to here...
+                {
+		  Serial.print("// Command not known:");
+		  Serial.println(cmdbuffer[bufindr]);
+                }
 	}
 
 	ClearToSend();
@@ -1046,7 +1072,8 @@ void FlushSerialRequestResend()
 {
 	//char cmdbuffer[bufindr][100]="Resend:";
 	Serial.flush();
-	Serial.print("Resend:");
+	Serial.print("rs ");
+        ok_sent = true;  // No it's not - rs was sent instead; but this does the right thing...
 	Serial.println(gcode_LastN + 1);
 	ClearToSend();
 }
@@ -1058,7 +1085,9 @@ void ClearToSend()
 	if(fromsd[bufindr])
 		return;
 	#endif
-	Serial.println("ok"); 
+        if(!ok_sent)
+	  Serial.println("ok");
+        ok_sent = false;
 }
 
 inline void get_coordinates()
@@ -2128,35 +2157,35 @@ inline void manage_inactivity(byte debug) {
 
 #ifdef DEBUG
 void log_message(char*   message) {
-	Serial.print("DEBUG"); Serial.println(message);
+	Serial.print("// DEBUG"); Serial.println(message);
 }
 
 void log_bool(char* message, bool value) {
-	Serial.print("DEBUG"); Serial.print(message); Serial.print(": "); Serial.println(value);
+	Serial.print("// DEBUG"); Serial.print(message); Serial.print(": "); Serial.println(value);
 }
 
 void log_int(char* message, int value) {
-	Serial.print("DEBUG"); Serial.print(message); Serial.print(": "); Serial.println(value);
+	Serial.print("// DEBUG"); Serial.print(message); Serial.print(": "); Serial.println(value);
 }
 
 void log_long(char* message, long value) {
-	Serial.print("DEBUG"); Serial.print(message); Serial.print(": "); Serial.println(value);
+	Serial.print("// DEBUG"); Serial.print(message); Serial.print(": "); Serial.println(value);
 }
 
 void log_float(char* message, float value) {
-	Serial.print("DEBUG"); Serial.print(message); Serial.print(": "); Serial.println(value);
+	Serial.print("// DEBUG"); Serial.print(message); Serial.print(": "); Serial.println(value);
 }
 
 void log_uint(char* message, unsigned int value) {
-	Serial.print("DEBUG"); Serial.print(message); Serial.print(": "); Serial.println(value);
+	Serial.print("// DEBUG"); Serial.print(message); Serial.print(": "); Serial.println(value);
 }
 
 void log_ulong(char* message, unsigned long value) {
-	Serial.print("DEBUG"); Serial.print(message); Serial.print(": "); Serial.println(value);
+	Serial.print("// DEBUG"); Serial.print(message); Serial.print(": "); Serial.println(value);
 }
 
 void log_int_array(char* message, int value[], int array_lenght) {
-	Serial.print("DEBUG"); Serial.print(message); Serial.print(": {");
+	Serial.print("// DEBUG"); Serial.print(message); Serial.print(": {");
 	for(int i=0; i < array_lenght; i++){
 		Serial.print(value[i]);
 		if(i != array_lenght-1) Serial.print(", ");
@@ -2165,7 +2194,7 @@ void log_int_array(char* message, int value[], int array_lenght) {
 }
 
 void log_long_array(char* message, long value[], int array_lenght) {
-	Serial.print("DEBUG"); Serial.print(message); Serial.print(": {");
+	Serial.print("// DEBUG"); Serial.print(message); Serial.print(": {");
 	for(int i=0; i < array_lenght; i++){
 		Serial.print(value[i]);
 		if(i != array_lenght-1) Serial.print(", ");
@@ -2174,7 +2203,7 @@ void log_long_array(char* message, long value[], int array_lenght) {
 }
 
 void log_float_array(char* message, float value[], int array_lenght) {
-	Serial.print("DEBUG"); Serial.print(message); Serial.print(": {");
+	Serial.print("// DEBUG"); Serial.print(message); Serial.print(": {");
 	for(int i=0; i < array_lenght; i++){
 		Serial.print(value[i]);
 		if(i != array_lenght-1) Serial.print(", ");
@@ -2183,7 +2212,7 @@ void log_float_array(char* message, float value[], int array_lenght) {
 }
 
 void log_uint_array(char* message, unsigned int value[], int array_lenght) {
-	Serial.print("DEBUG"); Serial.print(message); Serial.print(": {");
+	Serial.print("// DEBUG"); Serial.print(message); Serial.print(": {");
 	for(int i=0; i < array_lenght; i++){
 		Serial.print(value[i]);
 		if(i != array_lenght-1) Serial.print(", ");
@@ -2192,7 +2221,7 @@ void log_uint_array(char* message, unsigned int value[], int array_lenght) {
 }
 
 void log_ulong_array(char* message, unsigned long value[], int array_lenght) {
-	Serial.print("DEBUG"); Serial.print(message); Serial.print(": {");
+	Serial.print("// DEBUG"); Serial.print(message); Serial.print(": {");
 	for(int i=0; i < array_lenght; i++){
 		Serial.print(value[i]);
 		if(i != array_lenght-1) Serial.print(", ");
