@@ -226,7 +226,7 @@
 // E1 for extruder 1, and so on.
 
 //#define E_STEPS_PER_MM   0.9      // NEMA 17 extruder 5mm diameter drive - empirically adjusted
-#define E0_STEPS_PER_MM   30//8.5 //15.5//17.6      // NEMA 17 59/11 geared extruder 8mm diameter drive
+#define E0_STEPS_PER_MM   33//8.5 //15.5//17.6      // NEMA 17 59/11 geared extruder 8mm diameter drive
 //#define E0_STEPS_PER_MM   30 // NEMA 11 31/11 geared extruder 6.0mm diameter drive, 1.75mm filament
 #define E1_STEPS_PER_MM   15.25//17.6      // NEMA 17 59/11 geared extruder 8mm diameter drive
 
