@@ -573,13 +573,13 @@ void home_axis(float& destination, float& current, const float& slow, const floa
   	current_to_dest();
         destination = current - 2.0;
         destination_feedrate = fast;
-        prepare_move();
+        execute_move();
         
         if(min_pin >= 0)
   	  destination = -2.0*max_length;
         else
           destination = 0.0; // Best we can do
-  	prepare_move();
+  	execute_move();
   
         if(min_pin < 0)
         {
@@ -590,13 +590,13 @@ void home_axis(float& destination, float& current, const float& slow, const floa
   	current_feedrate = 0.25*slow;
   	current_to_dest();  
         destination = 1.0;
-        prepare_move();
+        execute_move();
   
         if(min_pin >= 0)
   	  destination = -10.0;
         else
           destination = 0.0; // Again, best we can do
-        prepare_move();
+        execute_move();
   
   	current = 0;
   	current_feedrate = saved_feedrate;
@@ -619,7 +619,7 @@ inline void process_commands()
 			manage_heater();
 			#endif
 			get_coordinates(); // For X Y Z E F
-			prepare_move();
+			execute_move();
 			previous_millis_cmd = millis();
 			//ClearToSend();
 			//return;
@@ -653,14 +653,14 @@ inline void process_commands()
 					current_position[0] = 0;
 					destination[0] = 1.5 * X_MAX_LENGTH * X_HOME_DIR;
 					destination_feedrate = homing_feedrate[0];
-					prepare_move();
+					execute_move();
 
 					current_position[0] = 0;
 					destination[0] = -5 * X_HOME_DIR;
-					prepare_move();
+					execute_move();
 
 					destination[0] = 10 * X_HOME_DIR;
-					prepare_move();
+					execute_move();
 
 					current_position[0] = (X_HOME_DIR == -1) ? 0 : X_MAX_LENGTH;
 					destination[0] = current_position[0];
@@ -673,14 +673,14 @@ inline void process_commands()
 					current_position[1] = 0;
 					destination[1] = 1.5 * Y_MAX_LENGTH * Y_HOME_DIR;
 					destination_feedrate = homing_feedrate[1];
-					prepare_move();
+					execute_move();
 
 					current_position[1] = 0;
 					destination[1] = -5 * Y_HOME_DIR;
-					prepare_move();
+					execute_move();
 
 					destination[1] = 10 * Y_HOME_DIR;
-					prepare_move();
+					execute_move();
 
 					current_position[1] = (Y_HOME_DIR == -1) ? 0 : Y_MAX_LENGTH;
 					destination[1] = current_position[1];
@@ -693,14 +693,14 @@ inline void process_commands()
 					current_position[2] = 0;
 					destination[2] = 1.5 * Z_MAX_LENGTH * Z_HOME_DIR;
 					destination_feedrate = homing_feedrate[2];
-					prepare_move();
+					execute_move();
 
 					current_position[2] = 0;
 					destination[2] = -2 * Z_HOME_DIR;
-					prepare_move();
+					execute_move();
 
 					destination[2] = 10 * Z_HOME_DIR;
-					prepare_move();
+					execute_move();
 
 					current_position[2] = (Z_HOME_DIR == -1) ? 0 : Z_MAX_LENGTH;
 					destination[2] = current_position[2];
@@ -1002,8 +1002,9 @@ inline void process_commands()
 			#endif
 			break;
 		case 115: // M115
-			Serial.print("// FIRMWARE_NAME:Sprinter FIRMWARE_URL:http%%3A/github.com/AdrianBowyer/RepRapLtd-engineering PROTOCOL_VERSION:1.X MACHINE_TYPE:Mendel EXTRUDER_COUNT:1 UUID:");
+			Serial.print("ok FIRMWARE_NAME:Sprinter FIRMWARE_URL:http%%3A/github.com/AdrianBowyer/RepRapLtd-engineering PROTOCOL_VERSION:1.X MACHINE_TYPE:Mendel EXTRUDER_COUNT:1 UUID:");
 			Serial.println(uuid);
+                        ok_sent = true;
 			break;
 
 		case 119: // M119
@@ -1225,7 +1226,7 @@ inline void coord_to_steps(const float& current, const float& destination, long&
 	}
 }
 
-inline void prepare_move()
+inline void execute_move()
 {
 
 	if(destination_feedrate > max_feedrate[0]) destination_feedrate = max_feedrate[0];
@@ -1478,14 +1479,14 @@ void linear_move() // make linear move with preset speeds and destinations, see 
 		//step_time += time_increment; 
 
 		while(micros() - start_time < time_increment) // This should work even when micros() overflows.  See http://www.arduino.cc/cgi-bin/yabb2/YaBB.pl?num=1292358124
-				{
+		{
 			if((millis() - previous_millis_heater) >= 500)
 			{
 				manage_heater();
 				previous_millis_heater = millis();
 				manage_inactivity(2);
 			}
-				}            
+		}            
 	} while (x_can_step || y_can_step || z_can_step  || e_can_step || f_can_step);
 
 
@@ -1520,7 +1521,7 @@ void linear_move() // make linear move with preset speeds and destinations, see 
 
 	// Code for ordinary G-Code F behaviour
 
-	void prepare_move()
+	void execute_move()
 {
 	//Find direction
 	for(int i=0; i < NUM_AXIS; i++) {
