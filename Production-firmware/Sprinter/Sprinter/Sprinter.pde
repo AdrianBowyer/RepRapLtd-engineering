@@ -889,26 +889,24 @@ inline void process_commands()
 			break;
 		case 105: // M105
 			#if (TEMP_0_PIN > -1) || defined (HEATER_USES_MAX6675)|| defined HEATER_USES_AD595
-			tt = analog2temp(current_raw);
-			#endif
+			 tt = analog2temp(current_raw);
+			#else
+                         tt = -300; // Lower than absolute zero flags temperature unavailable
+                        #endif
 			#if TEMP_1_PIN > -1 || defined BED_USES_AD595
-			bt = analog2tempBed(current_bed_raw);
-			#endif
-			#if (TEMP_0_PIN > -1) || defined (HEATER_USES_MAX6675) || defined HEATER_USES_AD595
+			 bt = analog2tempBed(current_bed_raw);
+			#else
+                         bt = -300;
+                        #endif
+			
                         ok_sent = true;
 			Serial.print("ok T:");
 			Serial.print(tt); 
-			#if TEMP_1_PIN > -1 || defined BED_USES_AD595
+			
 			Serial.print(" B:");
 			Serial.println(bt); 
-			#else
-				Serial.println();
-			#endif
-			#else
-				#error No temperature source available
-				#endif
-				return;
-			//break;
+			
+			break;
 		case 109: // M109 - Wait for extruder heater to reach target.
 			if (code_seen('S')) target_raw = temp2analogh(code_value());
 			#ifdef WATCHPERIOD
@@ -930,6 +928,8 @@ inline void process_commands()
 				manage_heater();
 			}
 			break;
+                case 113: // Extruder PWM - legacy
+                        break;
 		case 190: // M190 - Wait bed for heater to reach target.
 			#if TEMP_1_PIN > -1
 			if (code_seen('S')) target_bed_raw = temp2analogh(code_value());
