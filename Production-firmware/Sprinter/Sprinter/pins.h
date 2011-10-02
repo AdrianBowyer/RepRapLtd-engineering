@@ -605,6 +605,7 @@
 #define Y_ENABLE_PIN       -1
 #define Z_ENABLE_PIN       -1
 #define E_ENABLE_PIN       -1
+#define ENABLE_PIN          4
 
 #endif
 

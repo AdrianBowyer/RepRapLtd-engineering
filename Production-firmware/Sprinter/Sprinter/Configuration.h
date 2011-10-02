@@ -13,6 +13,7 @@
 // gen 3  Monolithic Electronics = 22
 #define MOTHERBOARD 6 
 
+// Comment out the next line to disable RepRap-style accelerations
 #define REPRAP_ACC
 
 //// Thermistor settings:
@@ -27,8 +28,11 @@
 #define THERMISTORBED 1
 
 //// Calibration variables
-// X, Y, Z, E steps per unit - Metric Prusa Mendel with Wade extruder:
-float axis_steps_per_unit[] = {91.4286, 91.4286, 2560, 30}; //{80, 80, 3200/1.25,700}; 
+// X, Y, Z, E steps per unit
+//Metric Prusa Mendel with T2.5 belts, 14-tooth pulleys, and Universal Mini extruder:
+float axis_steps_per_unit[] = {91.4286, 91.4286, 2560, 30};
+// Metric Prusa Mendel with Wade extruder
+//float axis_steps_per_unit[] = {80, 80, 3200/1.25,700}; 
 // Metric Prusa Mendel with Makergear geared stepper extruder:
 //float axis_steps_per_unit[] = {80,80,3200/1.25,1380}; 
 // MakerGear Hybrid Prusa Mendel:
@@ -51,24 +55,28 @@ const bool ENDSTOPS_INVERTING = false; //set to true to invert the logic of the 
 
 //// ADVANCED SETTINGS - to tweak parameters
 
-#include "thermistortables.h"
+// Uncomment the next line and comment out the following two to get the general purpose thermistor tables
+//#include "thermistortables.h"
+#include "extruderThermistorTable_100k_EPCOS_B57540G0104J.h"
+#include "bedThermistorTable_10k_EPCOS_B57550G103J.h"
 
 // For Inverting Stepper Enable Pins (Active Low) use 0, Non Inverting (Active High) use 1
 #define X_ENABLE_ON 0
 #define Y_ENABLE_ON 0
 #define Z_ENABLE_ON 0
 #define E_ENABLE_ON 0
+#define ENABLE_ON 0 // For early Sanguinololus with a joint enable pin
 
 // Disables axis when it's not being used.
 const bool DISABLE_X = false;
 const bool DISABLE_Y = false;
-const bool DISABLE_Z = true;
+const bool DISABLE_Z = false;
 const bool DISABLE_E = false;
 
 // Inverting axis direction
 const bool INVERT_X_DIR = false;
 const bool INVERT_Y_DIR = false;
-const bool INVERT_Z_DIR = true;
+const bool INVERT_Z_DIR = false;
 const bool INVERT_E_DIR = false;
 
 //// ENDSTOP SETTINGS:

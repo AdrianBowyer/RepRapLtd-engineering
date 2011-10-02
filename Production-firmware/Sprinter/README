@@ -1,3 +1,17 @@
+This is Adrian Bowyer's fork of the RepRap Sprinter firmware.  The README from the main branch is reproduced below under the ====.
+
+This is intended to be fully compatible with the RepRap Java Host software: http://reprap.org/wiki/Mendel_User_Manual:_Host_Software
+
+The main difference is that this version does RepRap-style accelerations realised by treating F values in GCodes as a linearly-changing variable like X, Y and so on.  For details see here: http://reprap.org/wiki/GCodes#G1:_Controlled_move
+
+Other differences are that I have tried to stick as much as possible to the specification at http://reprap.org/wiki/GCodes.  For example no line is transmitted by RepRap back to the host that is not preceeded by one of {"ok", "rs", "!!", "//"}.  Also the list of files from the SD card is sent on a single line: 
+
+ok Files: {FILE1.G,FILE2.G,FILE3.G,}
+
+which is easier to interpret.
+
+====================
+
 The leading developers of Sprinter are currently Kliment and caru, though many others contribute with their patches.
 
 This is a firmware for RAMPS and other reprap single-processor electronics setups. It supports printing from SD card, active heatbed control, and ATmega internal pullups.

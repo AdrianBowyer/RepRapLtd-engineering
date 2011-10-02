@@ -1,4 +1,4 @@
-// Tonokip RepRap firmware rewrite based off of Hydra-mmm firmware.
+// Sprinter RepRap firmware rewrite based onf Hydra-mmm firmware.
 // Licence: GPL
 
 // Extensively modified by Adrian; 29 September 2011
@@ -12,59 +12,12 @@
 #include "SdFat.h"
 #endif
 
-// look here for descriptions of gcodes: http://linuxcnc.org/handbook/gcode/g-code.html
-// http://objects.reprap.org/wiki/Mendel_User_Manual:_RepRapGCodes
-
-//Implemented Codes
-//-------------------
-// G0  -> G1
-// G1  - Coordinated Movement X Y Z E
-// G4  - Dwell S<seconds> or P<milliseconds>
-// G28 - Home all Axis
-// G90 - Use Absolute Coordinates
-// G91 - Use Relative Coordinates
-// G92 - Set current position to cordinates given
-
-//RepRap M Codes
-// M104 - Set extruder target temp
-// M105 - Read current temp
-// M106 - Fan on
-// M107 - Fan off
-// M109 - Wait for extruder current temp to reach target temp.
-// M114 - Display current position
-
-//Custom M Codes
-// M80  - Turn on Power Supply
-// M20  - List SD card
-// M21  - Init SD card
-// M22  - Release SD card
-// M23  - Select SD file (M23 filename.g)
-// M24  - Start/resume SD print
-// M25  - Pause SD print
-// M26  - Set SD position in bytes (M26 S12345)
-// M27  - Report SD print status
-// M28  - Start SD write (M28 filename.g)
-// M29  - Stop SD write
-// M81  - Turn off Power Supply
-// M82  - Set E codes absolute (default)
-// M83  - Set E codes relative while in Absolute Coordinates (G90) mode
-// M84  - Disable steppers until next move, 
-//        or use S<seconds> to specify an inactivity timeout, after which the steppers will be disabled.  S0 to disable the timeout.
-// M85  - Set inactivity shutdown timer with parameter S<seconds>. To disable set zero (default)
-// M92  - Set axis_steps_per_unit - same syntax as G92
-// M115	- Capabilities string
-// M140 - Set bed target temp
-// M190 - Wait for bed current temp to reach target temp.
-// M201 - Set max acceleration in units/s^2 for print moves (M201 X1000 Y1000)
-// M202 - Set max acceleration in units/s^2 for travel moves (M202 X1000 Y1000)
+// look here for descriptions of gcodes: http://reprap.org/wiki/GCodes
 
 
 //Stepper Movement Variables
 
-#ifdef REPRAP_ACC
-float current_feedrate = 100.0;
 boolean check_endstops = false;
-#endif
 
 boolean ok_sent = false;
 
@@ -73,6 +26,7 @@ bool move_direction[NUM_AXIS];
 unsigned long axis_previous_micros[NUM_AXIS];
 unsigned long previous_micros = 0, previous_millis_heater, previous_millis_bed_heater;
 unsigned long move_steps_to_take[NUM_AXIS];
+float current_feedrate = 100.0;
 #ifdef RAMP_ACCELERATION
 unsigned long axis_max_interval[NUM_AXIS];
 unsigned long axis_steps_per_sqr_second[NUM_AXIS];
@@ -396,7 +350,7 @@ inline void get_command()
 { 
 	while( Serial.available() > 0  && buflen < BUFSIZE) 
 	{
-		serial_char = Serial.read();
+		serial_char = Serial.read() & 0x7F ; // Just to be sure
 		if(serial_char == '\n' || serial_char == '\r' || serial_char == ':' || serial_count >= (MAX_CMD_SIZE - 1) ) 
 		{
 			if(!serial_count) 
@@ -509,7 +463,7 @@ inline void get_command()
 	while( filesize > sdpos  && buflen < BUFSIZE) 
 	{
 		n = file.read();
-		serial_char = (char)n;
+		serial_char = (char)n & 0x7F; // Just to be sure
 		if(serial_char == '\n' || serial_char == '\r' || serial_char == ':' || serial_count >= (MAX_CMD_SIZE - 1) || n == -1) 
 		{
 			sdpos = file.curPosition();
@@ -639,106 +593,29 @@ inline void process_commands()
                         break;
                 case 21:  // Metric - do nothing
                         break;
-		case 28: //G28 Home all Axis one at a time
-/*			saved_feedrate = destination_feedrate;
-			for(int i=0; i < NUM_AXIS; i++) {
-				destination[i] = current_position[i];
-			}
-			destination_feedrate = 0;
-
-			home_all_axis = !((code_seen(axis_codes[0])) || (code_seen(axis_codes[1])) || (code_seen(axis_codes[2])));
-
-			if((home_all_axis) || (code_seen(axis_codes[0]))) {
-				if ((X_MIN_PIN > -1 && X_HOME_DIR==-1) || (X_MAX_PIN > -1 && X_HOME_DIR==1)){
-					current_position[0] = 0;
-					destination[0] = 1.5 * X_MAX_LENGTH * X_HOME_DIR;
-					destination_feedrate = homing_feedrate[0];
-					execute_move();
-
-					current_position[0] = 0;
-					destination[0] = -5 * X_HOME_DIR;
-					execute_move();
-
-					destination[0] = 10 * X_HOME_DIR;
-					execute_move();
-
-					current_position[0] = (X_HOME_DIR == -1) ? 0 : X_MAX_LENGTH;
-					destination[0] = current_position[0];
-					destination_feedrate = 0;
-				}
-			}
-
-			if((home_all_axis) || (code_seen(axis_codes[1]))) {
-				if ((Y_MIN_PIN > -1 && Y_HOME_DIR==-1) || (Y_MAX_PIN > -1 && Y_HOME_DIR==1)){
-					current_position[1] = 0;
-					destination[1] = 1.5 * Y_MAX_LENGTH * Y_HOME_DIR;
-					destination_feedrate = homing_feedrate[1];
-					execute_move();
-
-					current_position[1] = 0;
-					destination[1] = -5 * Y_HOME_DIR;
-					execute_move();
-
-					destination[1] = 10 * Y_HOME_DIR;
-					execute_move();
-
-					current_position[1] = (Y_HOME_DIR == -1) ? 0 : Y_MAX_LENGTH;
-					destination[1] = current_position[1];
-					destination_feedrate = 0;
-				}
-			}
-
-			if((home_all_axis) || (code_seen(axis_codes[2]))) {
-				if ((Z_MIN_PIN > -1 && Z_HOME_DIR==-1) || (Z_MAX_PIN > -1 && Z_HOME_DIR==1)){
-					current_position[2] = 0;
-					destination[2] = 1.5 * Z_MAX_LENGTH * Z_HOME_DIR;
-					destination_feedrate = homing_feedrate[2];
-					execute_move();
-
-					current_position[2] = 0;
-					destination[2] = -2 * Z_HOME_DIR;
-					execute_move();
-
-					destination[2] = 10 * Z_HOME_DIR;
-					execute_move();
-
-					current_position[2] = (Z_HOME_DIR == -1) ? 0 : Z_MAX_LENGTH;
-					destination[2] = current_position[2];
-					destination_feedrate = 0;
-
-				}
-			}
-
-			destination_feedrate = saved_feedrate;*/
-
-
-
-        home_done = false;
-  	if(code_seen(axis_codes[0]))
-  	{
-  	  home_axis(destination[0], current_position[0], SLOW_XY, FAST_XY, X_MAX_LENGTH, X_MIN_PIN);
-  	  home_done = true;
-  	}
-  	if(code_seen(axis_codes[1]))
-  	{
-  	  home_axis(destination[1], current_position[1], SLOW_XY, FAST_XY, Y_MAX_LENGTH, Y_MIN_PIN);
-  	  home_done = true;
-  	}
-  	if(code_seen(axis_codes[2]))
-  	{
-  	  home_axis(destination[2], current_position[2], SLOW_Z, FAST_Z, Z_MAX_LENGTH, Z_MIN_PIN);
-  	  home_done = true;
-  	}
-  	if(!home_done)
-  	{
-  	  home_axis(destination[0], current_position[0], SLOW_XY, FAST_XY, X_MAX_LENGTH, X_MIN_PIN);
-  	  home_axis(destination[1], current_position[1], SLOW_XY, FAST_XY, Y_MAX_LENGTH, Y_MIN_PIN);
-  	  home_axis(destination[2], current_position[2], SLOW_Z, FAST_Z, Z_MAX_LENGTH, Z_MIN_PIN);
-  	}
-
-
-
-
+		case 28: //G28 Home axes
+                        home_done = false;
+                	if(code_seen(axis_codes[0]))
+    	                {
+                	  home_axis(destination[0], current_position[0], SLOW_XY, FAST_XY, X_MAX_LENGTH, X_MIN_PIN);
+                	  home_done = true;
+    	                }
+    	                if(code_seen(axis_codes[1]))
+    	                {
+    	                  home_axis(destination[1], current_position[1], SLOW_XY, FAST_XY, Y_MAX_LENGTH, Y_MIN_PIN);
+    	                  home_done = true;
+    	                }
+    	                if(code_seen(axis_codes[2]))
+    	                {
+    	                  home_axis(destination[2], current_position[2], SLOW_Z, FAST_Z, Z_MAX_LENGTH, Z_MIN_PIN);
+    	                  home_done = true;
+    	                }
+    	                if(!home_done)
+    	                {
+    	                  home_axis(destination[0], current_position[0], SLOW_XY, FAST_XY, X_MAX_LENGTH, X_MIN_PIN);
+    	                  home_axis(destination[1], current_position[1], SLOW_XY, FAST_XY, Y_MAX_LENGTH, Y_MIN_PIN);
+    	                  home_axis(destination[2], current_position[2], SLOW_Z, FAST_Z, Z_MAX_LENGTH, Z_MIN_PIN);
+    	                }
 			previous_millis_cmd = millis();
 			break;
 		case 90: // G90
@@ -764,6 +641,8 @@ inline void process_commands()
 
 		switch( (int)code_value() ) 
 		{
+                case 0: kill();
+                        break;
 		#ifdef SDSUPPORT
 
 		case 20: // M20 - list SD card
@@ -857,121 +736,16 @@ inline void process_commands()
 			//savetosd = false;
 			break;
 			#endif
-		case 104: // M104
-			if (code_seen('S')) target_raw = temp2analogh(code_value());
-			#ifdef WATCHPERIOD
-			if(target_raw > current_raw){
-				watchmillis = max(1,millis());
-				watch_raw = current_raw;
-			}else{
-				watchmillis = 0;
-			}
-			#endif
-			break;
 
-                case 114: // M114
-                        ok_sent = true;
-	                Serial.print("ok C:");
-                        for(int i = 0; i < NUM_AXIS; i++)
-                        {
-                          Serial.print(" ");
-                          Serial.print(axis_codes[i]);
-                          Serial.print(":"); 
-                          Serial.print(current_position[i]);
-                        }
-                        Serial.println();
-                        break;
-
-		case 140: // M140 set bed temp
-			#if TEMP_1_PIN > -1 || defined BED_USES_AD595
-			if (code_seen('S')) target_bed_raw = temp2analogBed(code_value());
-			#endif
-			break;
-		case 105: // M105
-			#if (TEMP_0_PIN > -1) || defined (HEATER_USES_MAX6675)|| defined HEATER_USES_AD595
-			 tt = analog2temp(current_raw);
-			#else
-                         tt = -300; // Lower than absolute zero flags temperature unavailable
-                        #endif
-			#if TEMP_1_PIN > -1 || defined BED_USES_AD595
-			 bt = analog2tempBed(current_bed_raw);
-			#else
-                         bt = -300;
-                        #endif
-			
-                        ok_sent = true;
-			Serial.print("ok T:");
-			Serial.print(tt); 
-			
-			Serial.print(" B:");
-			Serial.println(bt); 
-			
-			break;
-		case 109: // M109 - Wait for extruder heater to reach target.
-			if (code_seen('S')) target_raw = temp2analogh(code_value());
-			#ifdef WATCHPERIOD
-			if(target_raw>current_raw){
-				watchmillis = max(1,millis());
-				watch_raw = current_raw;
-			}else{
-				watchmillis = 0;
-			}
-			#endif
-			codenum = millis(); 
-			while(current_raw < target_raw) {
-				if( (millis() - codenum) > 1000 ) //Print Temp Reading every 1 second while heating up.
-				{
-					Serial.print("// T:");
-					Serial.println( analog2temp(current_raw) ); 
-					codenum = millis(); 
-				}
-				manage_heater();
-			}
-			break;
-                case 113: // Extruder PWM - legacy
-                        break;
-		case 190: // M190 - Wait bed for heater to reach target.
-			#if TEMP_1_PIN > -1
-			if (code_seen('S')) target_bed_raw = temp2analogh(code_value());
-			codenum = millis(); 
-			while(current_bed_raw < target_bed_raw) {
-				if( (millis()-codenum) > 1000 ) //Print Temp Reading every 1 second while heating up.
-				{
-					tt=analog2temp(current_raw);
-					Serial.print("// T:");
-					Serial.print( tt );
-					Serial.print(" B:");
-					Serial.println( analog2temp(current_bed_raw) ); 
-					codenum = millis(); 
-				}
-				manage_heater();
-			}
-			#endif
-			break;
-			#if FAN_PIN > -1
-		case 106: //M106 Fan On
-			if (code_seen('S')){
-				WRITE(FAN_PIN, HIGH);
-				analogWrite(FAN_PIN, constrain(code_value(),0,255) );
-			}
-			else {
-				WRITE(FAN_PIN, HIGH);
-				analogWrite(FAN_PIN, 255 );
-			}
-			break;
-		case 107: //M107 Fan Off
-			analogWrite(FAN_PIN, 0);
-			WRITE(FAN_PIN, LOW);
-			break;
-			#endif
-			#if (PS_ON_PIN > -1)
+         #if (PS_ON_PIN > -1)
 		case 80: // M81 - ATX Power On
 			SET_OUTPUT(PS_ON_PIN); //GND
 			break;
 		case 81: // M81 - ATX Power Off
 			SET_INPUT(PS_ON_PIN); //Floating
 			break;
-			#endif
+	#endif
+
 		case 82:
 			axis_relative_modes[3] = false;
 			break;
@@ -1001,12 +775,113 @@ inline void process_commands()
 			}
 			#endif
 			break;
+                case 101: // Extruder forward - legacy
+                        break;
+                case 102: // Extruder reverse - legacy
+                        break;
+                case 103: // Extruder off - legacy
+                        break;
+		case 104: // M104
+			if (code_seen('S')) target_raw = temp2analogh(code_value());
+			#ifdef WATCHPERIOD
+			if(target_raw > current_raw){
+				watchmillis = max(1,millis());
+				watch_raw = current_raw;
+			}else{
+				watchmillis = 0;
+			}
+			#endif
+			break;
+
+
+
+		case 105: // M105
+			#if (TEMP_0_PIN > -1) || defined (HEATER_USES_MAX6675)|| defined HEATER_USES_AD595
+			 tt = analog2temp(current_raw);
+			#else
+                         tt = -300; // Lower than absolute zero flags temperature unavailable
+                        #endif
+			#if TEMP_1_PIN > -1 || defined BED_USES_AD595
+			 bt = analog2tempBed(current_bed_raw);
+			#else
+                         bt = -300;
+                        #endif
+			
+                        ok_sent = true;
+			Serial.print("ok T:");
+			Serial.print(tt); 
+			
+			Serial.print(" B:");
+			Serial.println(bt); 
+			
+			break;
+
+	#if FAN_PIN > -1
+		case 106: //M106 Fan On
+			if (code_seen('S')){
+				WRITE(FAN_PIN, HIGH);
+				analogWrite(FAN_PIN, constrain(code_value(),0,255) );
+			}
+			else {
+				WRITE(FAN_PIN, HIGH);
+				analogWrite(FAN_PIN, 255 );
+			}
+			break;
+		case 107: //M107 Fan Off
+			analogWrite(FAN_PIN, 0);
+			WRITE(FAN_PIN, LOW);
+			break;
+	#endif
+			
+                case 108: // Set extruder speed - legacy
+                        break;
+		case 109: // M109 - Wait for extruder heater to reach target.
+			if (code_seen('S')) target_raw = temp2analogh(code_value());
+			#ifdef WATCHPERIOD
+			if(target_raw>current_raw){
+				watchmillis = max(1,millis());
+				watch_raw = current_raw;
+			}else{
+				watchmillis = 0;
+			}
+			#endif
+			codenum = millis(); 
+			while(current_raw < target_raw) {
+				if( (millis() - codenum) > 1000 ) //Print Temp Reading every 1 second while heating up.
+				{
+					Serial.print("// T:");
+					Serial.println( analog2temp(current_raw) ); 
+					codenum = millis(); 
+				}
+				manage_heater();
+			}
+			break;
+                case 110: // Set line number - dealt with by get_command() above
+                        break;
+                case 113: // Extruder PWM - legacy
+                        break;
+                case 114: // M114
+                        ok_sent = true;
+	                Serial.print("ok C:");
+                        for(int i = 0; i < NUM_AXIS; i++)
+                        {
+                          Serial.print(" ");
+                          Serial.print(axis_codes[i]);
+                          Serial.print(":"); 
+                          Serial.print(current_position[i]);
+                        }
+                        Serial.println();
+                        break;
+
 		case 115: // M115
 			Serial.print("ok FIRMWARE_NAME:Sprinter FIRMWARE_URL:http%%3A/github.com/AdrianBowyer/RepRapLtd-engineering PROTOCOL_VERSION:1.X MACHINE_TYPE:Mendel EXTRUDER_COUNT:1 UUID:");
 			Serial.println(uuid);
                         ok_sent = true;
 			break;
-
+                case 116: // TODO - wait for all temperatures
+                        break;
+                case 117: // TODO - report zero errors
+                        break;
 		case 119: // M119
                         Serial.print("// ");
 			#if (X_MIN_PIN > -1)
@@ -1037,6 +912,34 @@ inline void process_commands()
 			break;
 			#ifdef RAMP_ACCELERATION
 			//TODO: update for all axis, use for loop
+
+                case 126: // TODO - open valve
+                        break;
+                case 127: // TODO - close valve
+                        break;
+		case 140: // M140 set bed temp
+			#if TEMP_1_PIN > -1 || defined BED_USES_AD595
+			if (code_seen('S')) target_bed_raw = temp2analogBed(code_value());
+			#endif
+			break;
+		case 190: // M190 - Wait bed for heater to reach target.
+			#if TEMP_1_PIN > -1
+			if (code_seen('S')) target_bed_raw = temp2analogh(code_value());
+			codenum = millis(); 
+			while(current_bed_raw < target_bed_raw) {
+				if( (millis()-codenum) > 1000 ) //Print Temp Reading every 1 second while heating up.
+				{
+					tt=analog2temp(current_raw);
+					Serial.print("// T:");
+					Serial.print( tt );
+					Serial.print(" B:");
+					Serial.println( analog2temp(current_bed_raw) ); 
+					codenum = millis(); 
+				}
+				manage_heater();
+			}
+			#endif
+			break;
 		case 201: // M201
 			for(int i=0; i < NUM_AXIS; i++) {
 				if(code_seen(axis_codes[i])) axis_steps_per_sqr_second[i] = code_value() * axis_steps_per_unit[i];
@@ -1056,11 +959,11 @@ inline void process_commands()
 
 	} else if (code_seen('T'))
         {
-          // Put some tool change code in here...
+          // TODO Put some tool change code in here...
 	}else{
                 if(cmdbuffer[bufindr][0] != ';') // TODO - find out why empty comment lines get through to here...
                 {
-		  Serial.print("// Command not known:");
+		  Serial.print("// Unknown command:");
 		  Serial.println(cmdbuffer[bufindr]);
                 }
 	}
@@ -1103,6 +1006,215 @@ inline void get_coordinates()
 	}
 }
 
+void manage_heater()
+{
+	if((millis() - previous_millis_heater) < HEATER_CHECK_INTERVAL )
+		return;
+	previous_millis_heater = millis();
+	#ifdef HEATER_USES_THERMISTOR
+	current_raw = analogRead(TEMP_0_PIN); 
+	#ifdef DEBUG_HEAT_MGMT
+	log_int("_HEAT_MGMT - analogRead(TEMP_0_PIN)", current_raw);
+	log_int("_HEAT_MGMT - NUMTEMPS", NUMTEMPS);
+	#endif
+	// When using thermistor, when the heater is colder than targer temp, we get a higher analog reading than target, 
+	// this switches it up so that the reading appears lower than target for the control logic.
+	current_raw = 1023 - current_raw;
+	#elif defined HEATER_USES_AD595
+	current_raw = analogRead(TEMP_0_PIN);    
+	#elif defined HEATER_USES_MAX6675
+	current_raw = read_max6675();
+	#endif
+	#ifdef SMOOTHING
+	if (!nma) nma = SMOOTHFACTOR * current_raw;
+	nma = (nma + current_raw) - (nma / SMOOTHFACTOR);
+	current_raw = nma / SMOOTHFACTOR;
+	#endif
+	#ifdef WATCHPERIOD
+	if(watchmillis && millis() - watchmillis > WATCHPERIOD){
+		if(watch_raw + 1 >= current_raw){
+			target_raw = 0;
+			WRITE(HEATER_0_PIN,LOW);
+			#if LED_PIN>-1
+			WRITE(LED_PIN,LOW);
+			#endif
+		}else{
+			watchmillis = 0;
+		}
+	}
+	#endif
+	#ifdef MINTEMP
+	if(current_raw <= minttemp)
+		target_raw = 0;
+	#endif
+	#ifdef MAXTEMP
+	if(current_raw >= maxttemp) {
+		target_raw = 0;
+	}
+	#endif
+	#if (TEMP_0_PIN > -1) || defined (HEATER_USES_MAX6675) || defined (HEATER_USES_AD595)
+	#ifdef PIDTEMP
+	error = target_raw - current_raw;
+	pTerm = (PID_PGAIN * error) / 100;
+	temp_iState += error;
+	temp_iState = constrain(temp_iState, temp_iState_min, temp_iState_max);
+	iTerm = (PID_IGAIN * temp_iState) / 100;
+	dTerm = (PID_DGAIN * (current_raw - temp_dState)) / 100;
+	temp_dState = current_raw;
+	analogWrite(HEATER_0_PIN, constrain(pTerm + iTerm - dTerm, 0, PID_MAX));
+	#else
+		if(current_raw >= target_raw)
+		{
+			WRITE(HEATER_0_PIN,LOW);
+			#if LED_PIN>-1
+			WRITE(LED_PIN,LOW);
+			#endif
+		}
+		else 
+		{
+			WRITE(HEATER_0_PIN,HIGH);
+			#if LED_PIN > -1
+			WRITE(LED_PIN,HIGH);
+			#endif
+		}
+	#endif
+	#endif
+
+	if(millis() - previous_millis_bed_heater < BED_CHECK_INTERVAL)
+		return;
+	previous_millis_bed_heater = millis();
+	#ifndef TEMP_1_PIN
+	return;
+	#endif
+	#if TEMP_1_PIN == -1
+	return;
+	#else
+
+		#ifdef BED_USES_THERMISTOR
+
+		current_bed_raw = analogRead(TEMP_1_PIN);   
+	#ifdef DEBUG_HEAT_MGMT
+	log_int("_HEAT_MGMT - analogRead(TEMP_1_PIN)", current_bed_raw);
+	log_int("_HEAT_MGMT - BNUMTEMPS", BNUMTEMPS);
+	#endif               
+
+	// If using thermistor, when the heater is colder than targer temp, we get a higher analog reading than target, 
+	// this switches it up so that the reading appears lower than target for the control logic.
+	current_bed_raw = 1023 - current_bed_raw;
+	#elif defined BED_USES_AD595
+	current_bed_raw = analogRead(TEMP_1_PIN);                  
+
+	#endif
+
+
+	if(current_bed_raw >= target_bed_raw)
+	{
+		WRITE(HEATER_1_PIN,LOW);
+	}
+	else 
+	{
+		WRITE(HEATER_1_PIN,HIGH);
+	}
+	#endif
+}
+
+
+int temp2analogu(int celsius, const short table[][2], int numtemps, int source) {
+	#if defined (HEATER_USES_THERMISTOR) || defined (BED_USES_THERMISTOR)
+	if(source==1){
+		int raw = 0;
+		byte i;
+
+		for (i=1; i<numtemps; i++)
+		{
+			if (table[i][1] < celsius)
+			{
+				raw = table[i-1][0] + 
+				(celsius - table[i-1][1]) * 
+				(table[i][0] - table[i-1][0]) /
+				(table[i][1] - table[i-1][1]);
+
+				break;
+			}
+		}
+
+		// Overflow: Set to last value in the table
+		if (i == numtemps) raw = table[i-1][0];
+
+		return 1023 - raw;
+	}
+	#elif defined (HEATER_USES_AD595) || defined (BED_USES_AD595)
+	if(source==2)
+		return celsius * 1024 / (500);
+	#elif defined (HEATER_USES_MAX6675) || defined (BED_USES_MAX6675)
+	if(source==3)
+		return celsius * 4;
+	#endif
+	return -1;
+}
+
+int analog2tempu(int raw,const short table[][2], int numtemps, int source) {
+	#if defined (HEATER_USES_THERMISTOR) || defined (BED_USES_THERMISTOR)
+	if(source==1){
+		int celsius = 0;
+		byte i;
+
+		raw = 1023 - raw;
+
+		for (i=1; i<numtemps; i++)
+		{
+			if (table[i][0] > raw)
+			{
+				celsius  = table[i-1][1] + 
+				(raw - table[i-1][0]) * 
+				(table[i][1] - table[i-1][1]) /
+				(table[i][0] - table[i-1][0]);
+
+				break;
+			}
+		}
+
+		// Overflow: Set to last value in the table
+		if (i == numtemps) celsius = table[i-1][1];
+
+		return celsius;
+	}
+	#elif defined (HEATER_USES_AD595) || defined (BED_USES_AD595)
+	if(source==2)
+		return raw * 500 / 1024;
+	#elif defined (HEATER_USES_MAX6675) || defined (BED_USES_MAX6675)
+	if(source==3)
+		return raw / 4;
+	#endif
+	return -1;
+}
+
+
+inline void kill()
+{
+  #if TEMP_0_PIN > -1
+	target_raw=0;
+	WRITE(HEATER_0_PIN,LOW);
+  #endif
+  #if TEMP_1_PIN > -1
+	target_bed_raw=0;
+	if(HEATER_1_PIN > -1) WRITE(HEATER_1_PIN,LOW);
+  #endif
+  #ifdef ENABLE_PIN // For early Sanguinololus
+        WRITE(ENABLE_PIN,!ENABLE_ON);
+  #else
+	disable_x();
+	disable_y();
+	disable_z();
+	disable_e();
+  #endif
+	if(PS_ON_PIN > -1) pinMode(PS_ON_PIN,INPUT);
+}
+
+inline void manage_inactivity(byte debug) { 
+	if( (millis()-previous_millis_cmd) >  max_inactive_time ) if(max_inactive_time) kill(); 
+	if( (millis()-previous_millis_cmd) >  stepper_inactive_time ) if(stepper_inactive_time) { disable_x(); disable_y(); disable_z(); disable_e(); }
+}
 
 
 // ************************************************************************************************************************************
@@ -1948,213 +2060,6 @@ int read_max6675()
 #endif
 
 
-void manage_heater()
-{
-	if((millis() - previous_millis_heater) < HEATER_CHECK_INTERVAL )
-		return;
-	previous_millis_heater = millis();
-	#ifdef HEATER_USES_THERMISTOR
-	current_raw = analogRead(TEMP_0_PIN); 
-	#ifdef DEBUG_HEAT_MGMT
-	log_int("_HEAT_MGMT - analogRead(TEMP_0_PIN)", current_raw);
-	log_int("_HEAT_MGMT - NUMTEMPS", NUMTEMPS);
-	#endif
-	// When using thermistor, when the heater is colder than targer temp, we get a higher analog reading than target, 
-	// this switches it up so that the reading appears lower than target for the control logic.
-	current_raw = 1023 - current_raw;
-	#elif defined HEATER_USES_AD595
-	current_raw = analogRead(TEMP_0_PIN);    
-	#elif defined HEATER_USES_MAX6675
-	current_raw = read_max6675();
-	#endif
-	#ifdef SMOOTHING
-	if (!nma) nma = SMOOTHFACTOR * current_raw;
-	nma = (nma + current_raw) - (nma / SMOOTHFACTOR);
-	current_raw = nma / SMOOTHFACTOR;
-	#endif
-	#ifdef WATCHPERIOD
-	if(watchmillis && millis() - watchmillis > WATCHPERIOD){
-		if(watch_raw + 1 >= current_raw){
-			target_raw = 0;
-			WRITE(HEATER_0_PIN,LOW);
-			#if LED_PIN>-1
-			WRITE(LED_PIN,LOW);
-			#endif
-		}else{
-			watchmillis = 0;
-		}
-	}
-	#endif
-	#ifdef MINTEMP
-	if(current_raw <= minttemp)
-		target_raw = 0;
-	#endif
-	#ifdef MAXTEMP
-	if(current_raw >= maxttemp) {
-		target_raw = 0;
-	}
-	#endif
-	#if (TEMP_0_PIN > -1) || defined (HEATER_USES_MAX6675) || defined (HEATER_USES_AD595)
-	#ifdef PIDTEMP
-	error = target_raw - current_raw;
-	pTerm = (PID_PGAIN * error) / 100;
-	temp_iState += error;
-	temp_iState = constrain(temp_iState, temp_iState_min, temp_iState_max);
-	iTerm = (PID_IGAIN * temp_iState) / 100;
-	dTerm = (PID_DGAIN * (current_raw - temp_dState)) / 100;
-	temp_dState = current_raw;
-	analogWrite(HEATER_0_PIN, constrain(pTerm + iTerm - dTerm, 0, PID_MAX));
-	#else
-		if(current_raw >= target_raw)
-		{
-			WRITE(HEATER_0_PIN,LOW);
-			#if LED_PIN>-1
-			WRITE(LED_PIN,LOW);
-			#endif
-		}
-		else 
-		{
-			WRITE(HEATER_0_PIN,HIGH);
-			#if LED_PIN > -1
-			WRITE(LED_PIN,HIGH);
-			#endif
-		}
-	#endif
-	#endif
-
-	if(millis() - previous_millis_bed_heater < BED_CHECK_INTERVAL)
-		return;
-	previous_millis_bed_heater = millis();
-	#ifndef TEMP_1_PIN
-	return;
-	#endif
-	#if TEMP_1_PIN == -1
-	return;
-	#else
-
-		#ifdef BED_USES_THERMISTOR
-
-		current_bed_raw = analogRead(TEMP_1_PIN);   
-	#ifdef DEBUG_HEAT_MGMT
-	log_int("_HEAT_MGMT - analogRead(TEMP_1_PIN)", current_bed_raw);
-	log_int("_HEAT_MGMT - BNUMTEMPS", BNUMTEMPS);
-	#endif               
-
-	// If using thermistor, when the heater is colder than targer temp, we get a higher analog reading than target, 
-	// this switches it up so that the reading appears lower than target for the control logic.
-	current_bed_raw = 1023 - current_bed_raw;
-	#elif defined BED_USES_AD595
-	current_bed_raw = analogRead(TEMP_1_PIN);                  
-
-	#endif
-
-
-	if(current_bed_raw >= target_bed_raw)
-	{
-		WRITE(HEATER_1_PIN,LOW);
-	}
-	else 
-	{
-		WRITE(HEATER_1_PIN,HIGH);
-	}
-	#endif
-}
-
-
-int temp2analogu(int celsius, const short table[][2], int numtemps, int source) {
-	#if defined (HEATER_USES_THERMISTOR) || defined (BED_USES_THERMISTOR)
-	if(source==1){
-		int raw = 0;
-		byte i;
-
-		for (i=1; i<numtemps; i++)
-		{
-			if (table[i][1] < celsius)
-			{
-				raw = table[i-1][0] + 
-				(celsius - table[i-1][1]) * 
-				(table[i][0] - table[i-1][0]) /
-				(table[i][1] - table[i-1][1]);
-
-				break;
-			}
-		}
-
-		// Overflow: Set to last value in the table
-		if (i == numtemps) raw = table[i-1][0];
-
-		return 1023 - raw;
-	}
-	#elif defined (HEATER_USES_AD595) || defined (BED_USES_AD595)
-	if(source==2)
-		return celsius * 1024 / (500);
-	#elif defined (HEATER_USES_MAX6675) || defined (BED_USES_MAX6675)
-	if(source==3)
-		return celsius * 4;
-	#endif
-	return -1;
-}
-
-int analog2tempu(int raw,const short table[][2], int numtemps, int source) {
-	#if defined (HEATER_USES_THERMISTOR) || defined (BED_USES_THERMISTOR)
-	if(source==1){
-		int celsius = 0;
-		byte i;
-
-		raw = 1023 - raw;
-
-		for (i=1; i<numtemps; i++)
-		{
-			if (table[i][0] > raw)
-			{
-				celsius  = table[i-1][1] + 
-				(raw - table[i-1][0]) * 
-				(table[i][1] - table[i-1][1]) /
-				(table[i][0] - table[i-1][0]);
-
-				break;
-			}
-		}
-
-		// Overflow: Set to last value in the table
-		if (i == numtemps) celsius = table[i-1][1];
-
-		return celsius;
-	}
-	#elif defined (HEATER_USES_AD595) || defined (BED_USES_AD595)
-	if(source==2)
-		return raw * 500 / 1024;
-	#elif defined (HEATER_USES_MAX6675) || defined (BED_USES_MAX6675)
-	if(source==3)
-		return raw / 4;
-	#endif
-	return -1;
-}
-
-
-inline void kill()
-{
-	#if TEMP_0_PIN > -1
-	target_raw=0;
-	WRITE(HEATER_0_PIN,LOW);
-	#endif
-	#if TEMP_1_PIN > -1
-	target_bed_raw=0;
-	if(HEATER_1_PIN > -1) WRITE(HEATER_1_PIN,LOW);
-	#endif
-	disable_x();
-	disable_y();
-	disable_z();
-	disable_e();
-
-	if(PS_ON_PIN > -1) pinMode(PS_ON_PIN,INPUT);
-
-}
-
-inline void manage_inactivity(byte debug) { 
-	if( (millis()-previous_millis_cmd) >  max_inactive_time ) if(max_inactive_time) kill(); 
-	if( (millis()-previous_millis_cmd) >  stepper_inactive_time ) if(stepper_inactive_time) { disable_x(); disable_y(); disable_z(); disable_e(); }
-}
 
 #ifdef DEBUG
 void log_message(char*   message) {
