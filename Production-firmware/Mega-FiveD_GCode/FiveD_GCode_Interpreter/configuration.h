@@ -177,8 +177,8 @@
 // Uncomment one of the following, depending on which board your electronics
 // use.  See pins.h, http://reprap.org/wiki/Pololu_Electronics and
 // http://reprap.org/wiki/Arduino_Mega_Pololu_Shield
-#define ADRIAN_POLOLU_STRIPBOARD
-//#define ADRIAN_POLOLU_PCB
+//#define ADRIAN_POLOLU_STRIPBOARD
+#define ADRIAN_POLOLU_PCB
 //#define ULTIMACHINE_PCB 
 
 // Comment out this if you are using a thermocouple

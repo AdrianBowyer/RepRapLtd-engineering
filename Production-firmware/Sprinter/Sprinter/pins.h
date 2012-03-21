@@ -385,6 +385,58 @@
 #define TEMP_0_PIN         13   // ANALOG NUMBERING
 #define TEMP_1_PIN         14   // ANALOG NUMBERING
 
+#else 
+#ifdef POLOLU_PCB  // Adrian's Pololu RepRap-printed PCBs
+
+
+/*
+  Pin definitions for the Pololu PCB design here:
+  
+  http://reprap.org/wiki/Pololu_Electronics#Simple_PCBs
+*/
+
+//#define DEBUG_PIN        13
+
+#define X_STEP_PIN 51
+#define X_DIR_PIN 53
+#define X_MIN_PIN 47
+#define X_MAX_PIN -1
+#define X_ENABLE_PIN 49
+
+#define Y_STEP_PIN 43
+#define Y_DIR_PIN 45
+#define Y_MIN_PIN 39
+#define Y_MAX_PIN -1
+#define Y_ENABLE_PIN 41
+
+#define Z_STEP_PIN 42
+#define Z_DIR_PIN 44
+#define Z_MIN_PIN 38
+#define Z_MAX_PIN -1
+#define Z_ENABLE_PIN 40
+
+
+
+#define E_STEP_PIN         48
+#define E_DIR_PIN          50
+#define E_ENABLE_PIN       46
+
+
+#define SDPOWER            -1
+#define SDSS               -1
+#define LED_PIN            13
+#define FAN_PIN            -1
+#define PS_ON_PIN          -1
+#define KILL_PIN           -1
+
+#define HEATER_0_PIN       2
+#define HEATER_1_PIN       3
+#define TEMP_0_PIN         0   // ANALOG NUMBERING
+#define TEMP_1_PIN         1   // ANALOG NUMBERING
+
+
+
+
 
 #else // RAMPS_V_1_1 or RAMPS_V_1_2 as default
 
@@ -431,6 +483,7 @@
 
 #define TEMP_0_PIN          2    // MUST USE ANALOG INPUT NUMBERING NOT DIGITAL OUTPUT NUMBERING!!!!!!!!!
 #define TEMP_1_PIN          1    // MUST USE ANALOG INPUT NUMBERING NOT DIGITAL OUTPUT NUMBERING!!!!!!!!!
+#endif
 #endif
 
 // SPI for Max6675 Thermocouple 

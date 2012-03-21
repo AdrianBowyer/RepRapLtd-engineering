@@ -4,14 +4,18 @@
 // BASIC SETTINGS: select your board type, thermistor type, axis scaling, and endstop configuration
 
 //// The following define selects which electronics board you have. Please choose the one that matches your setup
-// MEGA/RAMPS up to 1.2  = 3,
+// MEGA/RAMPS up to 1.2 + Adrian's Pololu RepRap-printed PCBs = 3,
 // RAMPS 1.3 = 33
 // Gen6 = 5, 
 // Sanguinololu up to 1.1 = 6
 // Sanguinololu 1.2 and above = 62
 // Gen 3 Plus = 21
 // gen 3  Monolithic Electronics = 22
-#define MOTHERBOARD 6 
+#define MOTHERBOARD 3 
+
+#if MOTHERBOARD == 3
+#define POLOLU_PCB // Adrian's Pololu RepRap-printed PCBs
+#endif
 
 // Comment out the next line to disable RepRap-style accelerations
 #define REPRAP_ACC
@@ -30,7 +34,11 @@
 //// Calibration variables
 // X, Y, Z, E steps per unit
 //Metric Prusa Mendel with T2.5 belts, 14-tooth pulleys, and Universal Mini extruder:
+#if MOTHERBOARD == 3
+float axis_steps_per_unit[] = {91.4286, 91.4286, 6667.184, 30};
+#else
 float axis_steps_per_unit[] = {91.4286, 91.4286, 2560, 30};
+#endif
 // Metric Prusa Mendel with Wade extruder
 //float axis_steps_per_unit[] = {80, 80, 3200/1.25,700}; 
 // Metric Prusa Mendel with Makergear geared stepper extruder:
@@ -42,7 +50,12 @@ float axis_steps_per_unit[] = {91.4286, 91.4286, 2560, 30};
 //// Endstop Settings
 #define ENDSTOPPULLUPS // Comment this out (using // at the start of the line) to disable the endstop pullup resistors
 // The pullups are needed if you directly connect a mechanical endswitch between the signal and ground pins.
+
+#if MOTHERBOARD == 3
+const bool ENDSTOPS_INVERTING = true; //set to true to invert the logic of the endstops
+#else
 const bool ENDSTOPS_INVERTING = false; //set to true to invert the logic of the endstops
+#endif
 //If your axes are only moving in one direction, make sure the endstops are connected properly.
 //If your axes move in one direction ONLY when the endstops are triggered, set ENDSTOPS_INVERTING to true here
 
@@ -50,14 +63,17 @@ const bool ENDSTOPS_INVERTING = false; //set to true to invert the logic of the 
 #define BAUDRATE 115200
 
 // Comment out (using // at the start of the line) to disable SD support:
+#if MOTHERBOARD != 3
 #define SDSUPPORT
+#endif
 
 
 //// ADVANCED SETTINGS - to tweak parameters
 
 // Uncomment the next line and comment out the following two to get the general purpose thermistor tables
 //#include "thermistortables.h"
-#include "extruderThermistorTable_100k_EPCOS_B57540G0104J.h"
+//#include "extruderThermistorTable_100k_EPCOS_B57540G0104J.h"
+#include "extruderThermistorTable_100K_RS_198_961.h"
 #include "bedThermistorTable_10k_EPCOS_B57550G103J.h"
 
 // For Inverting Stepper Enable Pins (Active Low) use 0, Non Inverting (Active High) use 1
@@ -70,13 +86,21 @@ const bool ENDSTOPS_INVERTING = false; //set to true to invert the logic of the 
 // Disables axis when it's not being used.
 const bool DISABLE_X = false;
 const bool DISABLE_Y = false;
+#if MOTHERBOARD == 3
+const bool DISABLE_Z = true;
+#else
 const bool DISABLE_Z = false;
+#endif
 const bool DISABLE_E = false;
 
 // Inverting axis direction
 const bool INVERT_X_DIR = false;
 const bool INVERT_Y_DIR = false;
+#if MOTHERBOARD == 3
+const bool INVERT_Z_DIR = true;
+#else
 const bool INVERT_Z_DIR = false;
+#endif
 const bool INVERT_E_DIR = false;
 
 //// ENDSTOP SETTINGS:
@@ -146,7 +170,7 @@ char uuid[] = "00000000-0000-0000-0000-000000000000";
 #define HEATER_CHECK_INTERVAL 500
 #define BED_CHECK_INTERVAL 5000
 // Comment the following line to enable heat management during acceleration
-#define DISABLE_CHECK_DURING_ACC
+//#define DISABLE_CHECK_DURING_ACC
 #ifndef DISABLE_CHECK_DURING_ACC
   // Uncomment the following line to disable heat management during moves
   //#define DISABLE_CHECK_DURING_MOVE
@@ -154,7 +178,7 @@ char uuid[] = "00000000-0000-0000-0000-000000000000";
 // Uncomment the following line to disable heat management during travel moves (and extruder-only moves, eg: retracts), strongly recommended if you are missing steps mid print.
 // Probably this should remain commented if are using PID.
 // It also defines the max milliseconds interval after which a travel move is not considered so for the sake of this feature.
-#define DISABLE_CHECK_DURING_TRAVEL 1000
+//#define DISABLE_CHECK_DURING_TRAVEL 1000
 
 //// Temperature smoothing - only uncomment this if your temp readings are noisy (Gen6 without EvdZ's 5V hack)
 //#define SMOOTHING
