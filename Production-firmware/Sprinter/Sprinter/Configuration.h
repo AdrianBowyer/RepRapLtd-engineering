@@ -1,6 +1,11 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
+// Uncomment ONE of the next three lines - the one for your RepRap machine
+//#define REPRAPPRO_HUXLEY
+#define REPRAPPRO_MENDEL
+//#define REPRAPPRO_WALLACE
+
 // BASIC SETTINGS: select your board type, thermistor type, axis scaling, and endstop configuration
 
 //// The following define selects which electronics board you have. Please choose the one that matches your setup
@@ -11,7 +16,7 @@
 // Sanguinololu 1.2 and above = 62
 // Gen 3 Plus = 21
 // gen 3  Monolithic Electronics = 22
-#define MOTHERBOARD 3 
+#define MOTHERBOARD 62
 
 #if MOTHERBOARD == 3
 #define POLOLU_PCB // Adrian's Pololu RepRap-printed PCBs
@@ -37,7 +42,8 @@
 #if MOTHERBOARD == 3
 float axis_steps_per_unit[] = {91.4286, 91.4286, 6667.184, 30};
 #else
-float axis_steps_per_unit[] = {91.4286, 91.4286, 2560, 30};
+//float axis_steps_per_unit[] = {91.4286, 91.4286, 2560, 30}; // M8 + AB extruder
+float axis_steps_per_unit[] = {93.4034, 93.4034, 4000, 52};  // M5 + JM extruder  NOTE STEPPS/MM!!!
 #endif
 // Metric Prusa Mendel with Wade extruder
 //float axis_steps_per_unit[] = {80, 80, 3200/1.25,700}; 
@@ -94,14 +100,14 @@ const bool DISABLE_Z = false;
 const bool DISABLE_E = false;
 
 // Inverting axis direction
-const bool INVERT_X_DIR = false;
+const bool INVERT_X_DIR = true; //true for RRP Mendel
 const bool INVERT_Y_DIR = false;
 #if MOTHERBOARD == 3
 const bool INVERT_Z_DIR = true;
 #else
 const bool INVERT_Z_DIR = false;
 #endif
-const bool INVERT_E_DIR = false;
+const bool INVERT_E_DIR = true;// true for RRP Mendel
 
 //// ENDSTOP SETTINGS:
 // Sets direction of endstops when homing; 1=MAX, -1=MIN
@@ -157,15 +163,24 @@ char uuid[] = "00000000-0000-0000-0000-000000000000";
 
 //// PID settings:
 // Uncomment the following line to enable PID support. This is untested and could be disastrous. Be careful.
-//#define PIDTEMP
+#define PIDTEMP
 #ifdef PIDTEMP
 #define PID_MAX 255 // limits current to nozzle
-#define PID_INTEGRAL_DRIVE_MAX 220
-#define PID_PGAIN 180 //100 is 1.0
-#define PID_IGAIN 2 //100 is 1.0
-#define PID_DGAIN 100 //100 is 1.0
+#define PID_INTEGRAL_DRIVE_MAX 80//220
+#define PID_PGAIN 200//180 //100 is 1.0
+#define PID_IGAIN 1//2 //100 is 1.0
+#define PID_DGAIN 2000//100 //100 is 1.0
 #endif
-
+/*
+#define PIDTEMP 1
+#ifdef PIDTEMP
+int pid_max = 255; // limits current to nozzle
+int pid_i_max = 80;//130;//125;
+double Kp = 2;//1.10;
+double Ki = 0.01;
+double Kd = 20.0;//0.01;
+#endif
+*/
 // How often should the heater check for new temp readings, in milliseconds
 #define HEATER_CHECK_INTERVAL 500
 #define BED_CHECK_INTERVAL 5000
